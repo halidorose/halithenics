@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>halithenics — Vücut Ağırlığı Antrenman Platformu</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- EmailJS SDK -->
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+  <!-- Fontlar -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            serif: ['Playfair Display', 'serif'],
+            mono: ['Space Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              500: '#22c55e',
+              600: '#16a34a',
+            },
+            dark: {
+              950: '#090a0f',
+              900: '#11131a',
+              800: '#1c1f2b'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    @keyframes fadeOut {
+      0% { opacity: 1; visibility: visible; }
+      100% { opacity: 0; visibility: hidden; }
+    }
+    .splash-fade {
+      animation: fadeOut 0.4s ease-out 0.8s forwards;
+    }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #090a0f; }
+    ::-webkit-scrollbar-thumb { background: #1c1f2b; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #22c55e; }
+  </style>
+</head>
+<body class="bg-dark-950 text-gray-100 font-sans antialiased min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-dark-950">
+
+  <!-- Açılış Logosu -->
+  <div id="splash" class="fixed inset-0 bg-dark-950 z-[100] flex flex-col items-center justify-center splash-fade pointer-events-none">
+    <span class="text-9xl font-black text-brand-500 font-serif italic tracking-tighter">h</span>
+    <span class="font-mono text-[10px] text-gray-500 tracking-widest mt-4">halithenics • Est. 2026</span>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="fixed top-20 right-4 z-[90] space-y-2 pointer-events-none max-w-sm w-full"></div>
+
+  <!-- Hipertrofi Açıklama Kutusu -->
+  <div id="hypertrophyInfoBox" class="hidden fixed bottom-6 right-6 z-50 max-w-xs bg-dark-900 border border-brand-500/50 p-4 rounded-xl shadow-2xl space-y-2 font-sans text-xs">
+    <div class="flex justify-between items-start">
+      <span class="text-brand-500 font-bold font-serif text-sm">Hipertrofi Nedir?</span>
+      <button onclick="closeHypertrophyBox()" class="text-gray-400 hover:text-white font-bold ml-2">✕</button>
+    </div>
+    <p class="text-gray-300 leading-relaxed">
+      Kas hücrelerinin hacimce büyümesi anlamına gelir. Calisthenics'te doğru gerilim ve düzenli yüklenme ile kas kütlesinin artmasını ifade eder.
+    </p>
+  </div>
+
+  <!-- Üst Navigasyon Barı -->
+  <nav class="border-b border-gray-800/80 bg-dark-950/90 backdrop-blur sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex justify-between items-center">
+      
+      <div class="flex items-center gap-8">
+        <div onclick="showTab('home')" class="cursor-pointer flex items-center gap-2 group">
+          <span class="text-3xl font-black text-brand-500 font-serif italic tracking-tighter leading-none">h</span>
+          <span class="text-xl font-extrabold tracking-tight text-white group-hover:text-brand-500 transition">halithenics</span>
+        </div>
+        
+        <div class="hidden md:flex gap-6 text-xs font-semibold text-gray-400">
+          <button onclick="showTab('home')" class="hover:text-white transition">Ana Sayfa</button>
+          <button onclick="showTab('articles')" class="hover:text-white transition">Rehber & Tarihçe</button>
+          <button onclick="showTab('generator')" class="hover:text-white transition">Program Oluştur</button>
+          <button onclick="showTab('myProgram')" class="hover:text-white transition flex items-center gap-1.5">
+            Programım <span id="savedBadge" class="hidden w-1.5 h-1.5 bg-brand-500 rounded-full"></span>
+          </button>
+          <button onclick="showTab('pricing')" class="hover:text-yellow-400 transition text-yellow-500 font-bold">Planlar</button>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div id="authNavArea">
+          <button onclick="openAuthModal()" class="bg-dark-900 border border-gray-700 hover:border-brand-500 text-gray-200 px-4 py-2 text-xs font-semibold rounded-lg transition">
+            Giriş Yap / Kayıt Ol
+          </button>
+        </div>
+        
+        <button onclick="toggleMobileMenu()" class="md:hidden text-gray-300 hover:text-white p-1">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobil Menü -->
+    <div id="mobileMenu" class="hidden md:hidden border-b border-gray-800 bg-dark-900 px-4 py-4 space-y-3 text-xs font-semibold">
+      <button onclick="showTab('home'); toggleMobileMenu()" class="block w-full text-left py-2 text-gray-300 border-b border-gray-800">Ana Sayfa</button>
+      <button onclick="showTab('articles'); toggleMobileMenu()" class="block w-full text-left py-2 text-gray-300 border-b border-gray-800">Rehber & Tarihçe</button>
+      <button onclick="showTab('generator'); toggleMobileMenu()" class="block w-full text-left py-2 text-gray-300 border-b border-gray-800">Program Oluştur</button>
+      <button onclick="showTab('myProgram'); toggleMobileMenu()" class="block w-full text-left py-2 text-gray-300 border-b border-gray-800">Programım</button>
+      <button onclick="showTab('pricing'); toggleMobileMenu()" class="block w-full text-left py-2 text-yellow-500 font-bold">Planlar</button>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full flex-grow">
+
+    <!-- TAB 1: ANA SAYFA -->
+    <section id="sec-home" class="space-y-16">
+      <div class="border border-gray-800/80 bg-dark-900 p-8 md:p-14 rounded-2xl relative overflow-hidden">
+        <div class="flex justify-between items-center text-xs text-gray-500 border-b border-gray-800/80 pb-4 mb-8 font-medium">
+          <span>halithenics v2.4</span>
+          <span class="text-brand-500">Yapay Zeka Destekli Calisthenics Motoru</span>
+          <span class="hidden sm:inline">Güç • Kontrol • Disiplin</span>
+        </div>
+
+        <div class="max-w-4xl space-y-6">
+          <h1 class="text-4xl md:text-7xl font-black font-serif tracking-tight leading-none">
+            Kendi Vücut Ağırlığınla <br><span class="text-brand-500 italic">Zirveye Ulaş.</span>
+          </h1>
+          <p class="text-gray-400 text-sm md:text-base leading-relaxed max-w-xl font-sans">
+            Vücudunu bir ekipman olarak kullan. Gücünü ölç, sınırlarını keşfet ve halithenics algoritması ile geliştirilmiş kişisel antrenman sistemini oluştur.
+          </p>
+          <div class="flex flex-wrap gap-4 pt-4 text-xs font-semibold">
+            <button onclick="showTab('generator')" class="bg-brand-500 hover:bg-brand-600 text-dark-950 px-6 py-4 rounded-xl transition">
+              Programını Oluştur
+            </button>
+            <button onclick="showTab('articles')" class="bg-dark-950 border border-gray-800 hover:border-gray-700 text-gray-300 px-6 py-4 rounded-xl transition">
+              Rehberi İncele
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="border border-gray-800/80 bg-dark-900 p-6 rounded-xl space-y-3">
+          <span class="text-brand-500 text-xs font-semibold">01 / Rehber</span>
+          <h3 class="font-bold text-xl text-gray-200 font-serif">Doğru Form & Teknik</h3>
+          <p class="text-xs text-gray-400 leading-relaxed font-sans">Şınav, barfiks ve dip hareketlerinde sakatlık yaşamadan maksimum <span class="hypertrophy-target text-brand-500 underline font-semibold cursor-pointer">hipertrofi</span> sağlamak için hazırlanmış kütüphane.</p>
+        </div>
+        <div class="border border-gray-800/80 bg-dark-900 p-6 rounded-xl space-y-3">
+          <span class="text-brand-500 text-xs font-semibold">02 / Algoritma</span>
+          <h3 class="font-bold text-xl text-gray-200 font-serif">Kişiye Özel İlerleme</h3>
+          <p class="text-xs text-gray-400 leading-relaxed font-sans">Mevcut barfiks gücüne, boy-kilo oranına ve haftalık antrenman gününe göre ayarlanan dönemsel yüklenme algoritması.</p>
+        </div>
+        <div class="border border-gray-800/80 bg-dark-900 p-6 rounded-xl space-y-3">
+          <span class="text-brand-500 text-xs font-semibold">03 / Takip</span>
+          <h3 class="font-bold text-xl text-gray-200 font-serif">Set & Dinlenme Kontrolü</h3>
+          <p class="text-xs text-gray-400 leading-relaxed font-sans">Set aralarında merkezi sinir sistemini dinlendirmek için optimize edilmiş hassas zamanlayıcı ve gelişim paneli.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: REHBER & TARİHÇE -->
+    <section id="sec-articles" class="hidden space-y-12">
+      <div class="border-b border-gray-800 pb-6 space-y-2">
+        <span class="text-xs text-brand-500 font-semibold">halithenics Kütüphanesi</span>
+        <h2 class="text-4xl md:text-6xl font-black font-serif text-gray-100">Rehber & Tarihçe</h2>
+        <p class="text-xs text-gray-400 font-sans">Öncelikli olarak temel calisthenics hareketlerinin biyomekaniğini inceleyin, ardından disiplinin kökenini okuyun.</p>
+      </div>
+
+      <div class="border border-gray-800 bg-dark-900 p-6 md:p-8 rounded-2xl space-y-6">
+        <div class="flex flex-wrap justify-between items-center border-b border-gray-800/80 pb-4">
+          <div>
+            <h3 class="text-2xl font-bold font-serif text-gray-100">Hareket Rehberi & Biyomekanik Analiz</h3>
+            <p class="text-xs text-gray-400 mt-1 font-sans">İlgilendiğiniz seviyeye göre hareket filtrelemesi yapabilirsiniz.</p>
+          </div>
+          <div class="flex gap-2 text-xs mt-3 sm:mt-0 font-semibold">
+            <button id="btn-filter-ALL" onclick="filterExercises('ALL')" class="filter-btn px-3 py-1.5 border border-brand-500 bg-brand-500/10 text-brand-500 rounded-lg">Tümü</button>
+            <button id="btn-filter-BEGINNER" onclick="filterExercises('BEGINNER')" class="filter-btn px-3 py-1.5 border border-gray-800 hover:border-gray-700 text-gray-400 rounded-lg">Başlangıç</button>
+            <button id="btn-filter-INTERMEDIATE" onclick="filterExercises('INTERMEDIATE')" class="filter-btn px-3 py-1.5 border border-gray-800 hover:border-gray-700 text-gray-400 rounded-lg">Orta Seviye</button>
+            <button id="btn-filter-ADVANCED" onclick="filterExercises('ADVANCED')" class="filter-btn px-3 py-1.5 border border-gray-800 hover:border-gray-700 text-gray-400 rounded-lg">İleri Seviye</button>
+          </div>
+        </div>
+
+        <div id="exerciseGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+      </div>
+
+      <div class="border border-gray-800/80 bg-dark-900 p-6 md:p-8 rounded-2xl space-y-4">
+        <span class="text-xs text-brand-500 font-semibold">Arşiv Notları</span>
+        <h3 class="text-2xl font-bold font-serif text-gray-100">Calisthenics'in Kısa Tarihçesi</h3>
+        <p class="text-xs text-gray-300 leading-relaxed font-sans">
+          Kalistenik kelimesi Antik Yunanca <strong>"Kalos" (Güzellik)</strong> ve <strong>"Sthenos" (Güç)</strong> sözcüklerinin birleşiminden türemiştir. Tarihsel belgelere göre Antik Yunan'da askerler muharebe öncesinde vücut ağırlığı rutinleriyle form tutmaktaydı. 19. yüzyılda Friedrich Ludwig Jahn gibi isimlerin açık hava antrenman sistemlerini kurmasıyla modern jimnastiğin altyapısı şekillenmiş, 2000'li yıllarda ise parklardaki sokak kültürüyle bugünkü halithenics disiplini doğmuştur.
+        </p>
+      </div>
+    </section>
+
+    <!-- TAB 3: PROGRAM OLUŞTURUCU -->
+    <section id="sec-generator" class="hidden max-w-2xl mx-auto py-4">
+      <div class="border border-gray-800 bg-dark-900 p-6 md:p-8 rounded-2xl space-y-6">
+        <div class="flex justify-between items-center border-b border-gray-800 pb-4 text-xs font-semibold">
+          <span class="text-brand-500 font-bold">halithenics Yapay Zeka Motoru</span>
+          <div class="flex gap-2 text-gray-500">
+            <span id="step-ind-1" class="text-brand-500 font-bold">01. Bilgiler</span> ━━ 
+            <span id="step-ind-2">02. Hedef</span> ━━ 
+            <span id="step-ind-3">03. Kapasite</span>
+          </div>
+        </div>
+
+        <form id="wizardForm" onsubmit="handleWizardSubmit(event)">
+          <div id="wizStep1" class="space-y-4">
+            <h3 class="text-xl font-bold font-serif text-gray-100">Adım 1: Vücut Ölçüleri & Sıklık</h3>
+            <div class="grid grid-cols-3 gap-3 text-xs">
+              <div>
+                <label class="block text-gray-400 mb-1">Boy (cm)</label>
+                <input type="number" id="wizHeight" placeholder="180" class="w-full bg-dark-950 border border-gray-800 p-3 text-white rounded-lg focus:border-brand-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-gray-400 mb-1">Kilo (kg)</label>
+                <input type="number" id="wizWeight" placeholder="75" class="w-full bg-dark-950 border border-gray-800 p-3 text-white rounded-lg focus:border-brand-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-gray-400 mb-1">Yaş</label>
+                <input type="number" id="wizAge" placeholder="22" class="w-full bg-dark-950 border border-gray-800 p-3 text-white rounded-lg focus:border-brand-500 outline-none">
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Haftalık Antrenman Sıklığı</label>
+              <select id="wizDays" class="w-full bg-dark-950 border border-gray-800 p-3 text-xs text-white rounded-lg focus:border-brand-500 outline-none">
+                <option value="3">Haftada 3 Gün (Tüm Vücut)</option>
+                <option value="4" selected>Haftada 4 Gün (İtiş / Çekiş Ayrımı)</option>
+                <option value="5">Haftada 5 Gün (Gelişmiş Yoğunluk)</option>
+              </select>
+            </div>
+            <button type="button" onclick="nextWizStep(2)" class="w-full bg-brand-500 text-dark-950 font-bold py-3 text-xs rounded-lg transition">
+              Sonraki Adım: Hedef →
+            </button>
+          </div>
+
+          <div id="wizStep2" class="hidden space-y-4">
+            <h3 class="text-xl font-bold font-serif text-gray-100">Adım 2: Gelişim Amacı</h3>
+            <div class="space-y-2 text-xs">
+              <label class="flex items-center gap-3 p-3 border border-gray-800 bg-dark-950 rounded-lg cursor-pointer hover:border-brand-500">
+                <input type="radio" name="wizGoal" value="maintain" checked class="accent-brand-500">
+                <span>Kas Kalitesini Artır & Güç İlerlemesi Sağla</span>
+              </label>
+              <label class="flex items-center gap-3 p-3 border border-gray-800 bg-dark-950 rounded-lg cursor-pointer hover:border-brand-500">
+                <input type="radio" name="wizGoal" value="lose" class="accent-brand-500">
+                <span>Yağ Oranını Düşür & Göreceli Gücü Yükselt</span>
+              </label>
+              <label class="flex items-center gap-3 p-3 border border-gray-800 bg-dark-950 rounded-lg cursor-pointer hover:border-brand-500">
+                <input type="radio" name="wizGoal" value="gain" class="accent-brand-500">
+                <span>Maksimum <span class="hypertrophy-target text-brand-500 font-semibold underline">Hipertrofi</span> & Hacim Kazanımı</span>
+              </label>
+            </div>
+            <div class="flex gap-2 text-xs font-semibold">
+              <button type="button" onclick="nextWizStep(1)" class="w-1/3 border border-gray-800 text-gray-400 py-3 rounded-lg">← Geri</button>
+              <button type="button" onclick="nextWizStep(3)" class="w-2/3 bg-brand-500 text-dark-950 font-bold py-3 rounded-lg">Sonraki Adım →</button>
+            </div>
+          </div>
+
+          <div id="wizStep3" class="hidden space-y-4">
+            <h3 class="text-xl font-bold font-serif text-gray-100">Adım 3: Mevcut Güç Seviyesi</h3>
+            <div class="text-xs space-y-2">
+              <label class="block text-gray-400">Tek Set Maksimum Kesintisiz Barfiks Sayısı</label>
+              <input type="number" id="wizPullups" placeholder="Örn: 8" class="w-full bg-dark-950 border border-gray-800 p-3 text-white rounded-lg focus:border-brand-500 outline-none">
+            </div>
+            <div class="flex gap-2 text-xs font-semibold">
+              <button type="button" onclick="nextWizStep(2)" class="w-1/3 border border-gray-800 text-gray-400 py-3 rounded-lg">← Geri</button>
+              <button type="submit" class="w-2/3 bg-brand-500 hover:bg-brand-600 text-dark-950 font-bold py-3 rounded-lg transition">
+                Programı Analiz Et ve Hazırla
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- TAB 4: PROGRAMIM -->
+    <section id="sec-myProgram" class="hidden space-y-8">
+      <div id="noProgramView" class="text-center py-16 space-y-4 border border-gray-800 bg-dark-900 rounded-2xl">
+        <h3 class="text-2xl font-bold font-serif text-gray-400">Henüz Kayıtlı Bir Programın Yok</h3>
+        <p class="text-xs text-gray-500 font-sans">halithenics yapay zeka sihirbazını kullanarak sana özel programı hemen oluştur.</p>
+        <button onclick="showTab('generator')" class="bg-brand-500 text-dark-950 font-bold px-6 py-3 text-xs rounded-lg">Program Oluştur</button>
+      </div>
+
+      <div id="programView" class="hidden space-y-8">
+        <div class="border border-gray-800 bg-dark-900 p-6 rounded-2xl space-y-4">
+          <div class="flex flex-wrap justify-between items-center border-b border-gray-800/80 pb-3 text-xs font-semibold">
+            <span class="text-brand-500 font-bold">halithenics Kişiselleştirilmiş Analiz</span>
+            <span id="userStatusBadge" class="text-gray-400"></span>
+          </div>
+
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+            <div class="border border-gray-800 bg-dark-950 p-3 rounded-xl">
+              <span class="text-[10px] text-gray-500 block font-semibold">Hedef Kalori</span>
+              <span id="dashCal" class="text-base font-bold text-white">-</span>
+            </div>
+            <div class="border border-gray-800 bg-dark-950 p-3 rounded-xl">
+              <span class="text-[10px] text-gray-500 block font-semibold">Protein</span>
+              <span id="dashProtein" class="text-base font-bold text-brand-500">-</span>
+            </div>
+            <div class="border border-gray-800 bg-dark-950 p-3 rounded-xl">
+              <span class="text-[10px] text-gray-500 block font-semibold">Karbonhidrat</span>
+              <span id="dashCarb" class="text-base font-bold text-yellow-500">-</span>
+            </div>
+            <div class="border border-gray-800 bg-dark-950 p-3 rounded-xl">
+              <span class="text-[10px] text-gray-500 block font-semibold">Yağ</span>
+              <span id="dashFat" class="text-base font-bold text-red-400">-</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="md:col-span-2 border border-gray-800 bg-dark-900 p-6 rounded-2xl space-y-4">
+            <span class="text-brand-500 text-xs font-bold block border-b border-gray-800 pb-2">Gelişim & İstatistik</span>
+            <div class="grid grid-cols-3 gap-2 text-center text-xs font-semibold">
+              <div class="bg-dark-950 p-3 border border-gray-800 rounded-xl">
+                <span class="text-gray-500 text-[10px] block">Tamamlanan Set</span>
+                <span id="statWorkouts" class="text-lg font-bold text-white">0</span>
+              </div>
+              <div class="bg-dark-950 p-3 border border-gray-800 rounded-xl">
+                <span class="text-gray-500 text-[10px] block">Streak</span>
+                <span id="statStreak" class="text-lg font-bold text-brand-500">0 Gün</span>
+              </div>
+              <div class="bg-dark-950 p-3 border border-gray-800 rounded-xl">
+                <span class="text-gray-500 text-[10px] block">Maksimum Barfiks</span>
+                <span id="statPullups" class="text-lg font-bold text-yellow-500">-</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="border border-gray-800 bg-dark-900 p-6 rounded-2xl space-y-3 font-semibold">
+            <div class="flex justify-between text-xs text-gray-400">
+              <span>Set Dinlenme Kronometresi</span>
+              <span id="timerStatus" class="text-brand-500">Ready</span>
+            </div>
+            <div id="timerDisplay" class="text-3xl font-black text-center text-brand-500 py-2 border border-gray-800 bg-dark-950 rounded-xl font-mono">
+              00:00
+            </div>
+            <div class="grid grid-cols-3 gap-1 text-[10px]">
+              <button onclick="setTimer(90)" class="bg-dark-950 hover:bg-gray-800 border border-gray-800 py-1.5 rounded-lg">90 Saniye</button>
+              <button onclick="setTimer(120)" class="bg-dark-950 hover:bg-gray-800 border border-gray-800 py-1.5 rounded-lg">120 Saniye</button>
+              <button onclick="setTimer(180)" class="bg-dark-950 hover:bg-gray-800 border border-gray-800 py-1.5 rounded-lg">180 Saniye</button>
+            </div>
+            <div class="flex gap-1 text-[10px] font-bold">
+              <button onclick="startTimer()" class="w-1/2 bg-brand-500 text-dark-950 py-2 rounded-lg">Başlat</button>
+              <button onclick="pauseTimer()" class="w-1/4 bg-gray-800 text-gray-300 py-2 rounded-lg">Durdur</button>
+              <button onclick="resetTimer()" class="w-1/4 bg-red-500/10 text-red-400 border border-red-500/20 py-2 rounded-lg">Sıfırla</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="border border-gray-800 bg-dark-900 p-6 rounded-2xl space-y-4">
+          <h3 class="text-xl font-bold font-serif text-gray-100 border-b border-gray-800 pb-2">
+            Haftalık Antrenman Rutini
+          </h3>
+          <div id="weeklyWorkoutCards" class="space-y-3 text-xs"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: PLANLAR -->
+    <section id="sec-pricing" class="hidden py-8">
+      <div class="text-center max-w-xl mx-auto mb-10 space-y-2">
+        <span class="text-xs text-brand-500 font-semibold">Üyelik Planları</span>
+        <h2 class="text-4xl font-black font-serif text-gray-100">Disiplinini Seç</h2>
+        <p class="text-xs text-gray-400 font-sans">Ücretsiz başlayabilir veya tüm sınırlamaları kaldırarak gelişimini hızlandırabilirsin.</p>
+      </div>
+
+      <div class="flex flex-col md:flex-row justify-center items-stretch gap-8 max-w-4xl mx-auto">
+        <div class="w-full md:w-1/2 border border-gray-800 bg-dark-900 p-8 rounded-2xl flex flex-col justify-between space-y-6">
+          <div class="space-y-4">
+            <div class="border-b border-gray-800 pb-4">
+              <span class="text-xs text-gray-500 font-semibold">Temel</span>
+              <h3 class="text-2xl font-bold font-serif text-gray-200 mt-1">Ücretsiz Plan</h3>
+              <div class="text-3xl font-black text-white mt-2">₺0 <span class="text-xs text-gray-500 font-normal">/ sonsuza kadar</span></div>
+            </div>
+            
+            <ul class="text-xs text-gray-300 space-y-3 font-sans">
+              <li class="flex items-center gap-2">✓ Temel Kalori & Makro Analizi</li>
+              <li class="flex items-center gap-2">✓ Haftalık Rutin Programı</li>
+              <li class="flex items-center gap-2">✓ Set Dinlenme Kronometresi</li>
+              <li class="flex items-center gap-2 text-gray-600">✕ 3 Günde 1 Program Güncelleme Sınırı</li>
+              <li class="flex items-center gap-2 text-gray-600">✕ Hafta Sonu İleri Seviye Rutinler Kilitli</li>
+            </ul>
+          </div>
+
+          <button onclick="showTab('generator')" class="w-full bg-dark-950 border border-gray-700 hover:border-gray-500 text-gray-300 text-xs font-bold py-3 rounded-xl transition">
+            Ücretsiz Başla
+          </button>
+        </div>
+
+        <div class="w-full md:w-1/2 border-2 border-brand-500 bg-dark-900 p-8 rounded-2xl flex flex-col justify-between space-y-6 relative">
+          <span class="absolute -top-3 right-6 bg-brand-500 text-dark-950 text-[10px] font-bold px-2 py-0.5 rounded">Tavsiye Edilen</span>
+          
+          <div class="space-y-4">
+            <div class="border-b border-gray-800 pb-4">
+              <span class="text-xs text-brand-500 font-semibold">Tam Erişim</span>
+              <h3 class="text-2xl font-bold font-serif text-gray-100 mt-1">Pro</h3>
+              <div class="text-3xl font-black text-brand-500 mt-2">₺200 <span class="text-xs text-gray-500 font-normal">/ ay</span></div>
+            </div>
+
+            <ul class="text-xs text-gray-200 space-y-3 font-sans">
+              <li class="flex items-center gap-2">✓ Sınırsız Yapay Zeka Program Güncellemesi (Günde 2x)</li>
+              <li class="flex items-center gap-2">✓ Hafta Sonu İleri Seviye Skill & Muscle-up Çalışmaları</li>
+              <li class="flex items-center gap-2">✓ İlerleme İstatistikleri Kaydı & Geçmiş Takibi</li>
+              <li class="flex items-center gap-2">✓ Biyomekanik Hareket Kütüphanesine Sınırsız Erişim</li>
+            </ul>
+          </div>
+
+          <button onclick="redirectToLemonSqueezy()" class="w-full bg-brand-500 hover:bg-brand-600 text-dark-950 font-bold text-xs py-3 rounded-xl transition uppercase tracking-wider">
+            Lemon Squeezy İle Pro'ya Geç (₺200)
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Modal: Hareket Detay -->
+  <div id="detailModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="border border-gray-800 bg-dark-900 p-6 md:p-8 rounded-2xl max-w-lg w-full space-y-4 text-xs relative">
+      <button onclick="closeDetailModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
+      <div id="detailModalContent"></div>
+    </div>
+  </div>
+
+  <!-- Modal: Giriş / Kayıt -->
+  <div id="authModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="border border-gray-800 bg-dark-900 p-6 rounded-2xl max-w-md w-full space-y-4 text-xs relative">
+      <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
+      <h3 class="text-xl font-bold font-serif text-center text-gray-100">halithenics Hesabı</h3>
+      
+      <button onclick="loginWithGoogle()" class="w-full bg-dark-950 border border-gray-700 py-3 text-gray-200 font-bold rounded-xl hover:bg-gray-800 flex items-center justify-center gap-2">
+        <svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+        Google ile Devam Et
+      </button>
+
+      <div class="text-center text-gray-600 my-2">— veya —</div>
+
+      <form onsubmit="handleEmailAuth(event)" class="space-y-3">
+        <input type="email" id="authEmail" placeholder="E-posta Adresiniz" required class="w-full bg-dark-950 border border-gray-800 p-3 text-white rounded-xl focus:border-brand-500 outline-none">
+        <input type="password" id="authPass" placeholder="Şifreniz" required class="w-full bg-dark-950 border border-gray-800 p-3 text-white rounded-xl focus:border-brand-500 outline-none">
+        <button type="submit" class="w-full bg-brand-500 text-dark-950 font-bold py-3 rounded-xl">
+          E-posta ile Kayıt Ol / Giriş Yap
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="border-t border-gray-800/80 bg-dark-950 py-8 text-xs text-gray-500">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div class="flex items-center gap-2">
+        <span class="text-brand-500 font-bold font-serif italic text-lg">h</span>
+        <span class="font-bold text-gray-300">halithenics</span>
+        <span>© 2026</span>
+      </div>
+      <div class="flex gap-4">
+        <a href="#" onclick="showTab('home')" class="hover:underline">Ana Sayfa</a>
+        <a href="#" onclick="showTab('articles')" class="hover:underline">Rehber & Tarihçe</a>
+        <a href="#" onclick="showTab('pricing')" class="hover:underline">Planlar</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Firebase Auth Entegrasyonu -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBSIWX1PV7_JmZgK3WcCuH1Onn5FL7zhNA",
+      authDomain: "halithenics.firebaseapp.com",
+      projectId: "halithenics",
+      storageBucket: "halithenics.firebasestorage.app",
+      messagingSenderId: "204155166555",
+      appId: "1:204155166555:web:6e6ee2c765aa0367e4847e"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    window.loginWithGoogle = async function() {
+      try {
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+        if (user && user.email) {
+          window.handleLoginSuccess(user.email);
+        }
+      } catch (error) {
+        console.error("Google Login Error:", error);
+        window.showToast("Google ile giriş sırasında bir aksama oluştu.", "error");
+      }
+    };
+  </script>
+
+  <script src="app.js"></script>
+</body>
+</html>
