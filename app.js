@@ -15,7 +15,7 @@ const EMAILJS_SERVICE_ID = "service_fchh3e7";
 const EMAILJS_TEMPLATE_ID = "template_xjhfoyn";
 
 // Lemon Squeezy panelinden aldığın Checkout Linkini buraya yapıştır
-const LEMON_SQUEEZY_CHECKOUT_URL = "https://halithenics.lemonsqueezy.com/checkout/buy/sample-id";
+const LEMON_SQUEEZY_CHECKOUT_URL = "https://halithenics.lemonsqueezy.com/checkout/buy/ff9472c4-4798-4d1d-91af-20256282ba30";
 
 document.addEventListener('DOMContentLoaded', () => {
   // Splash katmanını kaldır
