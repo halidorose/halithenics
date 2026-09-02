@@ -1,5 +1,5 @@
 /* ==========================================================================
-   halithenics — Engine (Firebase Auth & Data Persistence Fixed)
+   halithenics — Engine (Fixes: 1-Hour Hypertrophy, Locked Weekend Redirect, Reset Wizard, Persist Accounts)
    ========================================================================== */
 
 let currentUser = null;
@@ -13,7 +13,7 @@ const EMAILJS_PUBLIC_KEY = "IRUAlQeA4UfYl-tLE";
 const EMAILJS_SERVICE_ID = "service_fchh3e7";
 const EMAILJS_TEMPLATE_ID = "template_xjhfoyn";
 
-// Lemon Squeezy Ürün Linkini Buraya Ekle
+// Lemon Squeezy Gerçek Checkout Linkiniz
 const LEMON_SQUEEZY_CHECKOUT_URL = "https://halithenics.lemonsqueezy.com/checkout/buy/ff9472c4-4798-4d1d-91af-20256282ba30";
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -43,15 +43,29 @@ function containsTurkishChars(str) {
   return /[çğıöşüÇĞİÖŞÜ]/.test(str);
 }
 
-// HIPERTROFİ BİLGİ KUTUSU
-let hypertrophyBoxClosedUser = false;
+/* ==========================================================================
+   HIPERTROFİ BİLGİ KUTUSU (1 SAATLİK HAFIZALI)
+   ========================================================================== */
 function setupHypertrophyObserver() {
   const targets = document.querySelectorAll('.hypertrophy-target');
   if (!targets.length) return;
 
+  // 1 saatlik (3600000 ms) kontrol
+  const closedAt = localStorage.getItem('halithenics_hypertrophy_closed_at');
+  if (closedAt) {
+    const timePassed = Date.now() - parseInt(closedAt, 10);
+    if (timePassed < 3600000) {
+      return; // 1 saat henüz dolmadıysa gözlemciyi başlatma
+    }
+  }
+
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
-      if (entry.isIntersecting && !hypertrophyBoxClosedUser) {
+      if (entry.isIntersecting) {
+        const checkClosed = localStorage.getItem('halithenics_hypertrophy_closed_at');
+        if (checkClosed && (Date.now() - parseInt(checkClosed, 10) < 3600000)) {
+          return;
+        }
         const box = document.getElementById('hypertrophyInfoBox');
         if (box) box.classList.remove('hidden');
       }
@@ -64,10 +78,13 @@ function setupHypertrophyObserver() {
 function closeHypertrophyBox() {
   const box = document.getElementById('hypertrophyInfoBox');
   if (box) box.classList.add('hidden');
-  hypertrophyBoxClosedUser = true;
+  // Kapatıldığı zaman damgasını kaydet
+  localStorage.setItem('halithenics_hypertrophy_closed_at', Date.now().toString());
 }
 
-// LEMON SQUEEZY YÖNLENDİRMESİ
+/* ==========================================================================
+   LEMON SQUEEZY & ÖDEME
+   ========================================================================== */
 function redirectToLemonSqueezy() {
   if (!currentUser) {
     showToast("Ödeme yapabilmek için önce giriş yapmalısınız.", "warning");
@@ -84,17 +101,20 @@ function redirectToLemonSqueezy() {
 
 function handlePaymentSuccess() {
   const localUser = JSON.parse(localStorage.getItem('halithenics_currentUser'));
-  if (localUser) {
+  if (localUser && localUser.email) {
     currentUser = localUser;
     currentUser.isPro = true;
     currentUser.proExpiresAt = Date.now() + (30 * 24 * 60 * 60 * 1000);
     saveUserData();
     updateNavUser();
-    showToast("Ödemeniz doğrulandı! Pro Üyeliğiniz Aktif Edildi.", "info");
+    showToast("Ödemeniz doğrulandı! 1 Aylık Pro Üyeliğiniz Aktif Edildi.", "info");
     window.history.replaceState({}, document.title, window.location.pathname);
   }
 }
 
+/* ==========================================================================
+   SEKME VE MODAL YÖNETİMİ & SIFIRLAMA
+   ========================================================================== */
 function showToast(message, type = 'info') {
   const container = document.getElementById('toastContainer');
   if (!container) return;
@@ -123,9 +143,31 @@ function showTab(tabName) {
     const el = document.getElementById(`sec-${t}`);
     if (el) el.classList.add('hidden');
   });
+
+  // Eğer kullanıcı oturum açmamışsa veya programı yoksa Program Oluştur sekmesini sıfırla
+  if (tabName === 'generator' && (!currentUser || !savedProgram)) {
+    resetWizardInputs();
+  }
+
   const target = document.getElementById(`sec-${tabName}`);
   if (target) target.classList.remove('hidden');
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function resetWizardInputs() {
+  currentWizStep = 1;
+  const h = document.getElementById('wizHeight'); if (h) h.value = '';
+  const w = document.getElementById('wizWeight'); if (w) w.value = '';
+  const a = document.getElementById('wizAge'); if (a) a.value = '';
+  const p = document.getElementById('wizPullups'); if (p) p.value = '';
+  
+  const s1 = document.getElementById('wizStep1'); if (s1) s1.classList.remove('hidden');
+  const s2 = document.getElementById('wizStep2'); if (s2) s2.classList.add('hidden');
+  const s3 = document.getElementById('wizStep3'); if (s3) s3.classList.add('hidden');
+
+  const ind1 = document.getElementById('step-ind-1'); if (ind1) ind1.className = "text-brand-500 font-bold";
+  const ind2 = document.getElementById('step-ind-2'); if (ind2) ind2.className = "";
+  const ind3 = document.getElementById('step-ind-3'); if (ind3) ind3.className = "";
 }
 
 function toggleMobileMenu() {
@@ -142,18 +184,20 @@ function closeAuthModal() {
   if (el) el.classList.add('hidden'); 
 }
 
-// VERİ KAYDETME VE YÜKLEME DÜZELTMESİ
+/* ==========================================================================
+   OTURUM VE VERİ KAYIT MOTORU (GÜÇLENDİRİLMİŞ)
+   ========================================================================== */
 function checkLocalSession() {
   const localUser = JSON.parse(localStorage.getItem('halithenics_currentUser'));
   if (localUser && localUser.email) {
-    const savedData = JSON.parse(localStorage.getItem(`db_user_${localUser.email}`));
-    currentUser = savedData || localUser;
+    const dbUser = JSON.parse(localStorage.getItem(`db_user_${localUser.email.toLowerCase().trim()}`));
+    currentUser = dbUser || localUser;
     
     checkSubscriptionStatus();
     updateNavUser();
     
     savedProgram = currentUser.program || null;
-    userStats = currentUser.stats || userStats;
+    userStats = currentUser.stats || { workouts: 0, streak: 0, pullups: '-' };
     
     if (savedProgram) {
       const badge = document.getElementById('savedBadge');
@@ -177,57 +221,14 @@ function checkSubscriptionStatus() {
 
 function saveUserData() {
   if (!currentUser || !currentUser.email) return;
+  const cleanEmail = currentUser.email.toLowerCase().trim();
+  
   currentUser.program = savedProgram;
   currentUser.stats = userStats;
   
+  // Hem aktif kullanıcılara hem veritabanı kütüğüne yaz
   localStorage.setItem('halithenics_currentUser', JSON.stringify(currentUser));
-  localStorage.setItem(`db_user_${currentUser.email.toLowerCase().trim()}`, JSON.stringify(currentUser));
-}
-
-function handleLoginSuccess(email) {
-  const cleanEmail = email.toLowerCase().trim();
-  const existingDB = JSON.parse(localStorage.getItem(`db_user_${cleanEmail}`));
-
-  if (existingDB) {
-    currentUser = existingDB;
-    savedProgram = currentUser.program || null;
-    userStats = currentUser.stats || { workouts: 0, streak: 0, pullups: '-' };
-    showToast(`Tekrar hoş geldin, ${cleanEmail.split('@')[0]}!`, "info");
-  } else {
-    currentUser = { 
-      email: cleanEmail, 
-      isPro: false, 
-      proExpiresAt: null, 
-      lastCreated: null, 
-      dailyCount: 0,
-      program: null,
-      stats: { workouts: 0, streak: 0, pullups: '-' }
-    };
-    
-    if (typeof emailjs !== 'undefined' && EMAILJS_PUBLIC_KEY) {
-      emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, { user_email: cleanEmail })
-        .catch(err => console.error(err));
-    }
-    showToast(`Hesabın başarıyla oluşturuldu: ${cleanEmail}`, "info");
-  }
-
-  saveUserData();
-  checkSubscriptionStatus();
-  updateNavUser();
-  closeAuthModal();
-
-  if (savedProgram) {
-    const badge = document.getElementById('savedBadge');
-    if (badge) badge.classList.remove('hidden');
-    renderProgramDashboard();
-  } else {
-    const badge = document.getElementById('savedBadge');
-    if (badge) badge.classList.add('hidden');
-    const noProg = document.getElementById('noProgramView');
-    if (noProg) noProg.classList.remove('hidden');
-    const progView = document.getElementById('programView');
-    if (progView) progView.classList.add('hidden');
-  }
+  localStorage.setItem(`db_user_${cleanEmail}`, JSON.stringify(currentUser));
 }
 
 function handleEmailAuth(e) {
@@ -258,7 +259,91 @@ function handleEmailAuth(e) {
     return;
   }
 
-  handleLoginSuccess(email);
+  const existingDB = JSON.parse(localStorage.getItem(`db_user_${email}`));
+
+  if (existingDB) {
+    // Hesap varsa şifre doğrulama uyarısı verip verilerini yükle
+    if (existingDB.password && existingDB.password !== password) {
+      showToast("Bu e-posta adresi zaten kullanılıyor. Şifre hatalı!", "error");
+      return;
+    }
+    currentUser = existingDB;
+    savedProgram = currentUser.program || null;
+    userStats = currentUser.stats || { workouts: 0, streak: 0, pullups: '-' };
+    showToast(`Tekrar hoş geldin, ${email.split('@')[0]}!`, "info");
+  } else {
+    // Sıfırdan kayıt aç
+    currentUser = { 
+      email: email, 
+      password: password,
+      isPro: false, 
+      proExpiresAt: null, 
+      lastCreated: null, 
+      dailyCount: 0,
+      program: null,
+      stats: { workouts: 0, streak: 0, pullups: '-' }
+    };
+    
+    if (typeof emailjs !== 'undefined' && EMAILJS_PUBLIC_KEY) {
+      emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, { user_email: email })
+        .catch(err => console.error(err));
+    }
+    showToast(`Hesabın başarıyla oluşturuldu: ${email}`, "info");
+  }
+
+  saveUserData();
+  checkSubscriptionStatus();
+  updateNavUser();
+  closeAuthModal();
+
+  if (savedProgram) {
+    const badge = document.getElementById('savedBadge');
+    if (badge) badge.classList.remove('hidden');
+    renderProgramDashboard();
+    showTab('myProgram');
+  } else {
+    const badge = document.getElementById('savedBadge');
+    if (badge) badge.classList.add('hidden');
+    const noProg = document.getElementById('noProgramView');
+    if (noProg) noProg.classList.remove('hidden');
+    const progView = document.getElementById('programView');
+    if (progView) progView.classList.add('hidden');
+  }
+}
+
+function handleGoogleLoginSuccess(email) {
+  const cleanEmail = email.toLowerCase().trim();
+  const existingDB = JSON.parse(localStorage.getItem(`db_user_${cleanEmail}`));
+
+  if (existingDB) {
+    currentUser = existingDB;
+    savedProgram = currentUser.program || null;
+    userStats = currentUser.stats || { workouts: 0, streak: 0, pullups: '-' };
+    showToast(`Google ile giriş yapıldı: ${cleanEmail}`, "info");
+  } else {
+    currentUser = { 
+      email: cleanEmail, 
+      isPro: false, 
+      proExpiresAt: null, 
+      lastCreated: null, 
+      dailyCount: 0,
+      program: null,
+      stats: { workouts: 0, streak: 0, pullups: '-' }
+    };
+    showToast(`Hesabın Google ile oluşturuldu: ${cleanEmail}`, "info");
+  }
+
+  saveUserData();
+  checkSubscriptionStatus();
+  updateNavUser();
+  closeAuthModal();
+
+  if (savedProgram) {
+    const badge = document.getElementById('savedBadge');
+    if (badge) badge.classList.remove('hidden');
+    renderProgramDashboard();
+    showTab('myProgram');
+  }
 }
 
 function logout() {
@@ -275,6 +360,7 @@ function logout() {
   const progView = document.getElementById('programView');
   if (progView) progView.classList.add('hidden');
   
+  resetWizardInputs();
   showTab('home');
   showToast("Oturum kapatıldı.", "info");
 }
@@ -315,7 +401,7 @@ function updateNavUser() {
 }
 
 /* ==========================================================================
-   PROGRAM MOTORU & SİHİRBAZ
+   SİHİRBAZ VE PROGRAM PANOLARI
    ========================================================================== */
 
 let currentWizStep = 1;
@@ -470,19 +556,25 @@ function renderProgramDashboard() {
   daysData.forEach((d) => {
     const isLocked = d.isWeekend && (!currentUser || !currentUser.isPro);
     const card = document.createElement('div');
-    card.className = `border ${isLocked ? 'border-gray-800/40 bg-dark-950/40 opacity-50' : 'border-gray-800 bg-dark-950'} p-4 rounded-xl`;
-
+    
+    // Kilitli kartlara tıklanınca Planlar sekmesine yönlendir
     if (isLocked) {
+      card.className = "border border-yellow-500/30 bg-dark-950/40 opacity-60 p-4 rounded-xl cursor-pointer hover:border-yellow-500 transition";
+      card.onclick = () => {
+        showToast("Hafta sonu kilitli içeriklerini açmak için Pro plana geçmelisiniz.", "warning");
+        showTab('pricing');
+      };
       card.innerHTML = `
         <div class="flex justify-between items-center">
           <div>
             <span class="text-brand-500 font-bold">${d.day}</span>
             <div class="text-gray-400 font-semibold mt-0.5">${d.type}</div>
           </div>
-          <span class="bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-[10px] px-2 py-1 rounded">Pro Kilitli</span>
+          <span class="bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-[10px] px-2.5 py-1 rounded font-bold">Pro Kilitli (Tıkla & Yükselt)</span>
         </div>
       `;
     } else {
+      card.className = "border border-gray-800 bg-dark-950 p-4 rounded-xl";
       let exChecklist = d.ex.map((e) => `
         <label class="flex items-center gap-2 cursor-pointer mt-1.5">
           <input type="checkbox" onchange="toggleExerciseCheck(this)" class="accent-brand-500">
@@ -516,6 +608,9 @@ function toggleExerciseCheck(cb) {
   if (statW) statW.innerText = userStats.workouts;
 }
 
+/* ==========================================================================
+   KRONOMETRE SİSTEMİ
+   ========================================================================== */
 function setTimer(sec) {
   pauseTimer();
   timerSecondsLeft = sec;
@@ -562,6 +657,9 @@ function updateTimerDisplay() {
   if (disp) disp.innerText = `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
+/* ==========================================================================
+   HAREKET KÜTÜPHANESİ & AKTİF FİLTRELER
+   ========================================================================== */
 const exerciseData = [
   { id: '1', name: 'Nizami Şınav (Push-Up)', level: 'BEGINNER', levelTr: 'Başlangıç', muscle: 'Göğüs, Ön Omuz, Triceps', diff: '2/5', desc: 'Vücudun kalas gibi düz tutulduğu, göğsün yere 2 cm kalana kadar indiği temel itiş hareketi.' },
   { id: '2', name: 'Nizami Barfiks (Pull-Up)', level: 'INTERMEDIATE', levelTr: 'Orta Seviye', muscle: 'Kanat, Biceps, Üst Sırt', diff: '3.5/5', desc: 'Sallanma yapmadan, çenenin barı geçtiği ve aşağıda kolların tam açıldığı nizami çekiş.' },

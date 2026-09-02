@@ -66,14 +66,14 @@
   <!-- Toast Container -->
   <div id="toastContainer" class="fixed top-20 right-4 z-[90] space-y-2 pointer-events-none max-w-sm w-full"></div>
 
-  <!-- Hipertrofi Açıklama Kutusu -->
+  <!-- Hipertrofi Açıklama Kutusu (1 Saatlik Hafızalı) -->
   <div id="hypertrophyInfoBox" class="hidden fixed bottom-6 right-6 z-50 max-w-xs bg-dark-900 border border-brand-500/50 p-4 rounded-xl shadow-2xl space-y-2 font-sans text-xs">
     <div class="flex justify-between items-start">
       <span class="text-brand-500 font-bold font-serif text-sm">Hipertrofi Nedir?</span>
       <button onclick="closeHypertrophyBox()" class="text-gray-400 hover:text-white font-bold ml-2">✕</button>
     </div>
     <p class="text-gray-300 leading-relaxed">
-      Kas hücrelerinin hacimce büyümesi anlamına gelir. Calisthenics'te doğru gerilim ve düzenli yüklenme ile kas kütlesinin artmasını ifade eder.
+      Kas hücrelerinin hacimce büyümesi anlamına gelir. Calisthenics'te doğru gerilim ve mekanik yüklenme ile kas kütlesinin artmasını ifade eder.
     </p>
   </div>
 
@@ -497,11 +497,11 @@
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
         if (user && user.email) {
-          window.handleLoginSuccess(user.email);
+          window.handleGoogleLoginSuccess(user.email);
         }
       } catch (error) {
         console.error("Google Login Error:", error);
-        window.showToast("Google ile giriş sırasında bir aksama oluştu.", "error");
+        window.showToast("Google ile giriş sırasında bir aksama oluştu. Alan adınızın Firebase'de onaylı olduğundan emin olun.", "error");
       }
     };
   </script>
