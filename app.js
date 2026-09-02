@@ -1,5 +1,5 @@
 /* ==========================================================================
-   halithenics — Engine (With Verification Code & Persistent Storage)
+   halithenics — Engine (With Cloud Firestore & Verification Logic)
    ========================================================================== */
 
 let currentUser = null;
@@ -9,15 +9,12 @@ let userStats = { workouts: 0, streak: 0, pullups: '-' };
 let timerInterval = null;
 let timerSecondsLeft = 0;
 
-// Doğrulama Kodu Geçici Değişkenleri
 let pendingRegistration = null;
 
-// EmailJS Anahtarları
 const EMAILJS_PUBLIC_KEY = "IRUAlQeA4UfYl-tLE";
 const EMAILJS_SERVICE_ID = "service_fqyyddw";
 const EMAILJS_TEMPLATE_ID = "template_l7bmfyo";
 
-// Lemon Squeezy Gerçek Checkout Linki
 const LEMON_SQUEEZY_CHECKOUT_URL = "https://halithenics.lemonsqueezy.com/checkout/buy/ff9472c4-4798-4d1d-91af-20256282ba30";
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -48,7 +45,7 @@ function containsTurkishChars(str) {
 }
 
 /* ==========================================================================
-   HIPERTROFİ BİLGİ KUTUSU (1 SAATLİK HAFIZALI)
+   HIPERTROFİ BİLGİ KUTUSU (1 SAAT HAFIZALI)
    ========================================================================== */
 function setupHypertrophyObserver() {
   const targets = document.querySelectorAll('.hypertrophy-target');
@@ -183,13 +180,19 @@ function closeAuthModal() {
 }
 
 /* ==========================================================================
-   OTURUM VE VERİ KAYIT MOTORU (E-POSTA DOĞRULAMA KODU ENTEGRELİ)
+   FIRESTORE BULUT VERİTABANI MOTORU
    ========================================================================== */
-function checkLocalSession() {
+async function checkLocalSession() {
   const localUser = JSON.parse(localStorage.getItem('halithenics_currentUser'));
   if (localUser && localUser.email) {
     const cleanEmail = localUser.email.toLowerCase().trim();
-    const dbUser = JSON.parse(localStorage.getItem(`db_user_${cleanEmail}`));
+    
+    // Firestore Bulut Veritabanından Veriyi Çek
+    let dbUser = null;
+    if (window.db_getUserFromFirestore) {
+      dbUser = await window.db_getUserFromFirestore(cleanEmail);
+    }
+    
     currentUser = dbUser || localUser;
     
     checkSubscriptionStatus();
@@ -225,11 +228,16 @@ function saveUserData() {
   currentUser.program = savedProgram;
   currentUser.stats = userStats;
   
+  // 1. Yerel hafızaya kaydet
   localStorage.setItem('halithenics_currentUser', JSON.stringify(currentUser));
-  localStorage.setItem(`db_user_${cleanEmail}`, JSON.stringify(currentUser));
+  
+  // 2. Firestore Bulut Veritabanına Anında Kaydet
+  if (window.db_saveUserToFirestore) {
+    window.db_saveUserToFirestore(cleanEmail, currentUser);
+  }
 }
 
-function handleEmailAuth(e) {
+async function handleEmailAuth(e) {
   if (e) e.preventDefault();
   const emailInput = document.getElementById('authEmail');
   const passInput = document.getElementById('authPass');
@@ -258,10 +266,15 @@ function handleEmailAuth(e) {
   }
 
   const cleanEmail = email.toLowerCase().trim();
-  const existingDB = JSON.parse(localStorage.getItem(`db_user_${cleanEmail}`));
+  
+  // Firestore'dan bu e-postayı kontrol et
+  let existingDB = null;
+  if (window.db_getUserFromFirestore) {
+    existingDB = await window.db_getUserFromFirestore(cleanEmail);
+  }
 
   if (existingDB) {
-    // KULLANICI VARSA: Doğrudan Giriş Yap (Şifre kontrolü ile)
+    // KULLANICI VARSA: Şifre Doğrulama Yap (Kod Sorma)
     if (existingDB.password && existingDB.password !== password) {
       showToast("Bu e-posta adresi zaten kullanılıyor. Şifreniz hatalı!", "error");
       return;
@@ -284,7 +297,7 @@ function handleEmailAuth(e) {
       showTab('myProgram');
     }
   } else {
-    // KULLANICI YOKSA: Doğrulama Kodu Gönder ve Bekle
+    // KULLANICI YOKSA: Sadece Yeni Kayıtta Doğrulama Kodu Gönder
     const generatedCode = Math.floor(100000 + Math.random() * 900000).toString();
     pendingRegistration = { email: cleanEmail, password, code: generatedCode };
 
@@ -317,7 +330,7 @@ function handleVerifyCodeSubmit(e) {
   }
 
   if (inputCode === pendingRegistration.code) {
-    // KOD DOĞRU: Hesabı Oluştur ve Kaydet
+    // KOD DOĞRU: Hesabı Firestore'a Oluştur ve Aç
     currentUser = { 
       email: pendingRegistration.email, 
       password: pendingRegistration.password,
@@ -347,9 +360,13 @@ function cancelVerification() {
   const inp = document.getElementById('verifyCodeInput'); if (inp) inp.value = '';
 }
 
-function handleGoogleLoginSuccess(email) {
+async function handleGoogleLoginSuccess(email) {
   const cleanEmail = email.toLowerCase().trim();
-  const existingDB = JSON.parse(localStorage.getItem(`db_user_${cleanEmail}`));
+  
+  let existingDB = null;
+  if (window.db_getUserFromFirestore) {
+    existingDB = await window.db_getUserFromFirestore(cleanEmail);
+  }
 
   if (existingDB) {
     currentUser = existingDB;
@@ -357,6 +374,7 @@ function handleGoogleLoginSuccess(email) {
     userStats = currentUser.stats || { workouts: 0, streak: 0, pullups: '-' };
     showToast(`Google ile giriş yapıldı: ${cleanEmail}`, "info");
   } else {
+    // Google ile ilk kez giren kullanıcı (Kod Sormaz)
     currentUser = { 
       email: cleanEmail, 
       isPro: false, 
@@ -530,7 +548,7 @@ function handleWizardSubmit(e) {
   if (badge) badge.classList.remove('hidden');
   renderProgramDashboard();
   showTab('myProgram');
-  showToast("Yapay zeka antrenman programınız başarıyla oluşturuldu.", "info");
+  showToast("Yapay zeka antrenman programınız başarıyla oluşturuldu ve buluta kaydedildi.", "info");
 }
 
 function renderProgramDashboard() {
