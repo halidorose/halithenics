@@ -1,5 +1,5 @@
 /* ==========================================================================
-   halithenics — Engine (Fixes: 1-Hour Hypertrophy, Locked Weekend Redirect, Reset Wizard, Persist Accounts)
+   halithenics — Engine (With Verification Code & Persistent Storage)
    ========================================================================== */
 
 let currentUser = null;
@@ -9,11 +9,15 @@ let userStats = { workouts: 0, streak: 0, pullups: '-' };
 let timerInterval = null;
 let timerSecondsLeft = 0;
 
-const EMAILJS_PUBLIC_KEY = "IRUAlQeA4UfYl-tLE";
-const EMAILJS_SERVICE_ID = "service_fchh3e7";
-const EMAILJS_TEMPLATE_ID = "template_xjhfoyn";
+// Doğrulama Kodu Geçici Değişkenleri
+let pendingRegistration = null;
 
-// Lemon Squeezy Gerçek Checkout Linkiniz
+// EmailJS Anahtarları
+const EMAILJS_PUBLIC_KEY = "IRUAlQeA4UfYl-tLE";
+const EMAILJS_SERVICE_ID = "service_fqyyddw";
+const EMAILJS_TEMPLATE_ID = "template_l7bmfyo";
+
+// Lemon Squeezy Gerçek Checkout Linki
 const LEMON_SQUEEZY_CHECKOUT_URL = "https://halithenics.lemonsqueezy.com/checkout/buy/ff9472c4-4798-4d1d-91af-20256282ba30";
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -50,22 +54,17 @@ function setupHypertrophyObserver() {
   const targets = document.querySelectorAll('.hypertrophy-target');
   if (!targets.length) return;
 
-  // 1 saatlik (3600000 ms) kontrol
   const closedAt = localStorage.getItem('halithenics_hypertrophy_closed_at');
   if (closedAt) {
     const timePassed = Date.now() - parseInt(closedAt, 10);
-    if (timePassed < 3600000) {
-      return; // 1 saat henüz dolmadıysa gözlemciyi başlatma
-    }
+    if (timePassed < 3600000) return; // 1 saat henüz dolmadı
   }
 
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         const checkClosed = localStorage.getItem('halithenics_hypertrophy_closed_at');
-        if (checkClosed && (Date.now() - parseInt(checkClosed, 10) < 3600000)) {
-          return;
-        }
+        if (checkClosed && (Date.now() - parseInt(checkClosed, 10) < 3600000)) return;
         const box = document.getElementById('hypertrophyInfoBox');
         if (box) box.classList.remove('hidden');
       }
@@ -78,12 +77,11 @@ function setupHypertrophyObserver() {
 function closeHypertrophyBox() {
   const box = document.getElementById('hypertrophyInfoBox');
   if (box) box.classList.add('hidden');
-  // Kapatıldığı zaman damgasını kaydet
   localStorage.setItem('halithenics_hypertrophy_closed_at', Date.now().toString());
 }
 
 /* ==========================================================================
-   LEMON SQUEEZY & ÖDEME
+   LEMON SQUEEZY YÖNLENDİRMESİ
    ========================================================================== */
 function redirectToLemonSqueezy() {
   if (!currentUser) {
@@ -107,13 +105,13 @@ function handlePaymentSuccess() {
     currentUser.proExpiresAt = Date.now() + (30 * 24 * 60 * 60 * 1000);
     saveUserData();
     updateNavUser();
-    showToast("Ödemeniz doğrulandı! 1 Aylık Pro Üyeliğiniz Aktif Edildi.", "info");
+    showToast("Ödemeniz doğrulandı! Pro Üyeliğiniz Aktif Edildi.", "info");
     window.history.replaceState({}, document.title, window.location.pathname);
   }
 }
 
 /* ==========================================================================
-   SEKME VE MODAL YÖNETİMİ & SIFIRLAMA
+   SEKME VE MODAL YÖNETİMİ
    ========================================================================== */
 function showToast(message, type = 'info') {
   const container = document.getElementById('toastContainer');
@@ -144,7 +142,6 @@ function showTab(tabName) {
     if (el) el.classList.add('hidden');
   });
 
-  // Eğer kullanıcı oturum açmamışsa veya programı yoksa Program Oluştur sekmesini sıfırla
   if (tabName === 'generator' && (!currentUser || !savedProgram)) {
     resetWizardInputs();
   }
@@ -182,15 +179,17 @@ function openAuthModal() {
 function closeAuthModal() { 
   const el = document.getElementById('authModal');
   if (el) el.classList.add('hidden'); 
+  cancelVerification();
 }
 
 /* ==========================================================================
-   OTURUM VE VERİ KAYIT MOTORU (GÜÇLENDİRİLMİŞ)
+   OTURUM VE VERİ KAYIT MOTORU (E-POSTA DOĞRULAMA KODU ENTEGRELİ)
    ========================================================================== */
 function checkLocalSession() {
   const localUser = JSON.parse(localStorage.getItem('halithenics_currentUser'));
   if (localUser && localUser.email) {
-    const dbUser = JSON.parse(localStorage.getItem(`db_user_${localUser.email.toLowerCase().trim()}`));
+    const cleanEmail = localUser.email.toLowerCase().trim();
+    const dbUser = JSON.parse(localStorage.getItem(`db_user_${cleanEmail}`));
     currentUser = dbUser || localUser;
     
     checkSubscriptionStatus();
@@ -226,7 +225,6 @@ function saveUserData() {
   currentUser.program = savedProgram;
   currentUser.stats = userStats;
   
-  // Hem aktif kullanıcılara hem veritabanı kütüğüne yaz
   localStorage.setItem('halithenics_currentUser', JSON.stringify(currentUser));
   localStorage.setItem(`db_user_${cleanEmail}`, JSON.stringify(currentUser));
 }
@@ -259,23 +257,70 @@ function handleEmailAuth(e) {
     return;
   }
 
-  const existingDB = JSON.parse(localStorage.getItem(`db_user_${email}`));
+  const cleanEmail = email.toLowerCase().trim();
+  const existingDB = JSON.parse(localStorage.getItem(`db_user_${cleanEmail}`));
 
   if (existingDB) {
-    // Hesap varsa şifre doğrulama uyarısı verip verilerini yükle
+    // KULLANICI VARSA: Doğrudan Giriş Yap (Şifre kontrolü ile)
     if (existingDB.password && existingDB.password !== password) {
-      showToast("Bu e-posta adresi zaten kullanılıyor. Şifre hatalı!", "error");
+      showToast("Bu e-posta adresi zaten kullanılıyor. Şifreniz hatalı!", "error");
       return;
     }
+    
     currentUser = existingDB;
     savedProgram = currentUser.program || null;
     userStats = currentUser.stats || { workouts: 0, streak: 0, pullups: '-' };
-    showToast(`Tekrar hoş geldin, ${email.split('@')[0]}!`, "info");
+    
+    saveUserData();
+    checkSubscriptionStatus();
+    updateNavUser();
+    closeAuthModal();
+    showToast(`Tekrar hoş geldin, ${cleanEmail.split('@')[0]}!`, "info");
+
+    if (savedProgram) {
+      const badge = document.getElementById('savedBadge');
+      if (badge) badge.classList.remove('hidden');
+      renderProgramDashboard();
+      showTab('myProgram');
+    }
   } else {
-    // Sıfırdan kayıt aç
+    // KULLANICI YOKSA: Doğrulama Kodu Gönder ve Bekle
+    const generatedCode = Math.floor(100000 + Math.random() * 900000).toString();
+    pendingRegistration = { email: cleanEmail, password, code: generatedCode };
+
+    showToast("Doğrulama kodu e-postanıza gönderiliyor...", "info");
+
+    emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      user_email: cleanEmail,
+      passcode: generatedCode
+    })
+    .then(() => {
+      showToast("6 haneli doğrulama kodu e-postanıza gönderildi!", "info");
+      document.getElementById('authMainForm').classList.add('hidden');
+      document.getElementById('verifyForm').classList.remove('hidden');
+    })
+    .catch((err) => {
+      console.error("EmailJS Gönderim Hatası:", err);
+      showToast("Doğrulama kodu gönderilemedi. Lütfen e-posta adresinizi kontrol edin.", "error");
+    });
+  }
+}
+
+function handleVerifyCodeSubmit(e) {
+  if (e) e.preventDefault();
+  const inputCode = document.getElementById('verifyCodeInput').value.trim();
+
+  if (!pendingRegistration) {
+    showToast("Kayıt oturumu bulunamadı. Lütfen tekrar deneyin.", "error");
+    cancelVerification();
+    return;
+  }
+
+  if (inputCode === pendingRegistration.code) {
+    // KOD DOĞRU: Hesabı Oluştur ve Kaydet
     currentUser = { 
-      email: email, 
-      password: password,
+      email: pendingRegistration.email, 
+      password: pendingRegistration.password,
       isPro: false, 
       proExpiresAt: null, 
       lastCreated: null, 
@@ -283,32 +328,23 @@ function handleEmailAuth(e) {
       program: null,
       stats: { workouts: 0, streak: 0, pullups: '-' }
     };
+
+    saveUserData();
+    updateNavUser();
+    closeAuthModal();
+    showToast("E-posta adresiniz doğrulandı. Hesabınız başarıyla oluşturuldu!", "info");
     
-    if (typeof emailjs !== 'undefined' && EMAILJS_PUBLIC_KEY) {
-      emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, { user_email: email })
-        .catch(err => console.error(err));
-    }
-    showToast(`Hesabın başarıyla oluşturuldu: ${email}`, "info");
-  }
-
-  saveUserData();
-  checkSubscriptionStatus();
-  updateNavUser();
-  closeAuthModal();
-
-  if (savedProgram) {
-    const badge = document.getElementById('savedBadge');
-    if (badge) badge.classList.remove('hidden');
-    renderProgramDashboard();
-    showTab('myProgram');
+    cancelVerification();
   } else {
-    const badge = document.getElementById('savedBadge');
-    if (badge) badge.classList.add('hidden');
-    const noProg = document.getElementById('noProgramView');
-    if (noProg) noProg.classList.remove('hidden');
-    const progView = document.getElementById('programView');
-    if (progView) progView.classList.add('hidden');
+    showToast("Girdiğiniz doğrulama kodu hatalı! Lütfen tekrar kontrol edin.", "error");
   }
+}
+
+function cancelVerification() {
+  pendingRegistration = null;
+  const mainF = document.getElementById('authMainForm'); if (mainF) mainF.classList.remove('hidden');
+  const verF = document.getElementById('verifyForm'); if (verF) verF.classList.add('hidden');
+  const inp = document.getElementById('verifyCodeInput'); if (inp) inp.value = '';
 }
 
 function handleGoogleLoginSuccess(email) {
@@ -330,7 +366,7 @@ function handleGoogleLoginSuccess(email) {
       program: null,
       stats: { workouts: 0, streak: 0, pullups: '-' }
     };
-    showToast(`Hesabın Google ile oluşturuldu: ${cleanEmail}`, "info");
+    showToast(`Hesabınız Google ile oluşturuldu: ${cleanEmail}`, "info");
   }
 
   saveUserData();
@@ -557,7 +593,6 @@ function renderProgramDashboard() {
     const isLocked = d.isWeekend && (!currentUser || !currentUser.isPro);
     const card = document.createElement('div');
     
-    // Kilitli kartlara tıklanınca Planlar sekmesine yönlendir
     if (isLocked) {
       card.className = "border border-yellow-500/30 bg-dark-950/40 opacity-60 p-4 rounded-xl cursor-pointer hover:border-yellow-500 transition";
       card.onclick = () => {
@@ -609,7 +644,7 @@ function toggleExerciseCheck(cb) {
 }
 
 /* ==========================================================================
-   KRONOMETRE SİSTEMİ
+   KRONOMETRE
    ========================================================================== */
 function setTimer(sec) {
   pauseTimer();
@@ -658,7 +693,7 @@ function updateTimerDisplay() {
 }
 
 /* ==========================================================================
-   HAREKET KÜTÜPHANESİ & AKTİF FİLTRELER
+   HAREKET KÜTÜPHANESİ
    ========================================================================== */
 const exerciseData = [
   { id: '1', name: 'Nizami Şınav (Push-Up)', level: 'BEGINNER', levelTr: 'Başlangıç', muscle: 'Göğüs, Ön Omuz, Triceps', diff: '2/5', desc: 'Vücudun kalas gibi düz tutulduğu, göğsün yere 2 cm kalana kadar indiği temel itiş hareketi.' },

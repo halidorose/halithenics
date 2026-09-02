@@ -66,7 +66,7 @@
   <!-- Toast Container -->
   <div id="toastContainer" class="fixed top-20 right-4 z-[90] space-y-2 pointer-events-none max-w-sm w-full"></div>
 
-  <!-- Hipertrofi Açıklama Kutusu (1 Saatlik Hafızalı) -->
+  <!-- Hipertrofi Açıklama Kutusu (1 Saat Hafızalı) -->
   <div id="hypertrophyInfoBox" class="hidden fixed bottom-6 right-6 z-50 max-w-xs bg-dark-900 border border-brand-500/50 p-4 rounded-xl shadow-2xl space-y-2 font-sans text-xs">
     <div class="flex justify-between items-start">
       <span class="text-brand-500 font-bold font-serif text-sm">Hipertrofi Nedir?</span>
@@ -448,11 +448,26 @@
 
       <div class="text-center text-gray-600 my-2">— veya —</div>
 
-      <form onsubmit="handleEmailAuth(event)" class="space-y-3">
+      <!-- Giriş / Kayıt Formu -->
+      <form id="authMainForm" onsubmit="handleEmailAuth(event)" class="space-y-3">
         <input type="email" id="authEmail" placeholder="E-posta Adresiniz" required class="w-full bg-dark-950 border border-gray-800 p-3 text-white rounded-xl focus:border-brand-500 outline-none">
         <input type="password" id="authPass" placeholder="Şifreniz" required class="w-full bg-dark-950 border border-gray-800 p-3 text-white rounded-xl focus:border-brand-500 outline-none">
         <button type="submit" class="w-full bg-brand-500 text-dark-950 font-bold py-3 rounded-xl">
-          E-posta ile Kayıt Ol / Giriş Yap
+          Giriş Yap / Kayıt Ol
+        </button>
+      </form>
+
+      <!-- Doğrulama Kodu Formu (Başlangıçta gizli) -->
+      <form id="verifyForm" onsubmit="handleVerifyCodeSubmit(event)" class="hidden space-y-3">
+        <div class="p-3 bg-brand-500/10 border border-brand-500/30 rounded-xl text-[11px] text-brand-500">
+          E-posta adresinize 6 haneli doğrulama kodu gönderildi. Lütfen gelen kutunuzu (ve spam klasörünü) kontrol edin.
+        </div>
+        <input type="text" id="verifyCodeInput" placeholder="6 Haneli Doğrulama Kodu" maxlength="6" required class="w-full bg-dark-950 border border-gray-800 p-3 text-white text-center tracking-widest font-mono text-base rounded-xl focus:border-brand-500 outline-none">
+        <button type="submit" class="w-full bg-brand-500 text-dark-950 font-bold py-3 rounded-xl">
+          Kodu Doğrula ve Hesabı Aç
+        </button>
+        <button type="button" onclick="cancelVerification()" class="w-full border border-gray-800 text-gray-400 py-2 rounded-xl text-xs">
+          Vazgeç
         </button>
       </form>
     </div>
@@ -501,7 +516,7 @@
         }
       } catch (error) {
         console.error("Google Login Error:", error);
-        window.showToast("Google ile giriş sırasında bir aksama oluştu. Alan adınızın Firebase'de onaylı olduğundan emin olun.", "error");
+        window.showToast("Google ile giriş yaparken bir aksama oluştu.", "error");
       }
     };
   </script>
