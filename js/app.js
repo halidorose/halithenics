@@ -892,7 +892,7 @@ function renderExerciseGrid(filter) {
       </div>
       <h4 class="font-bold text-gray-200 text-base font-serif">${ex.name}</h4>
       <p class="text-xs text-gray-400 font-sans">${ex.muscle}</p>
-      <button onclick="openExerciseModal('${ex.id}')" class="text-brand-500 text-xs font-semibold mt-2 underline block">[ Detayları İncele ]</button>
+      <button onclick="openExerciseModal('${ex.id}')" class="text-brand-500 text-xs font-semibold mt-2 underline block">Detayları İncele</button>
     `;
     grid.appendChild(card);
   });
