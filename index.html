@@ -141,10 +141,10 @@
             Vücudunu bir ekipman olarak kullan. Gücünü ölç, sınırlarını keşfet ve halithenics algoritması ile geliştirilmiş kişisel antrenman sistemini oluştur.
           </p>
           <div class="flex flex-wrap gap-4 pt-4 text-xs font-semibold">
-            <button onclick="showTab('generator')" class="bg-brand-500 hover:bg-brand-600 text-dark-950 px-6 py-4 rounded-xl transition">
+            <button onclick="showTab('generator')" class="bg-brand-500 hover:bg-brand-600 text-dark-950 px-6 py-4 rounded-xl transition font-bold">
               Programını Oluştur
             </button>
-            <button onclick="showTab('articles')" class="bg-dark-950 border border-gray-800 hover:border-gray-700 text-gray-300 px-6 py-4 rounded-xl transition">
+            <button onclick="showTab('articles')" class="bg-dark-950 border border-gray-800 hover:border-gray-700 text-gray-300 px-6 py-4 rounded-xl transition font-bold">
               Rehberi İncele
             </button>
           </div>
@@ -390,8 +390,8 @@
               <li class="flex items-center gap-2">✓ Temel Kalori & Makro Analizi</li>
               <li class="flex items-center gap-2">✓ Haftalık Rutin Programı</li>
               <li class="flex items-center gap-2">✓ Set Dinlenme Kronometresi</li>
-              <li class="flex items-center gap-2 text-gray-600">✕ 3 Günde 1 Program Güncelleme Sınırı</li>
-              <li class="flex items-center gap-2 text-gray-600">✕ Hafta Sonu İleri Seviye Rutinler Kilitli</li>
+              <li class="flex items-center gap-2 text-gray-500">✕ 3 Günde 1 Program Güncelleme Sınırı</li>
+              <li class="flex items-center gap-2 text-gray-500">✕ Hafta Sonu İleri Seviye Rutinler Kilitli</li>
             </ul>
           </div>
 
@@ -405,20 +405,21 @@
           
           <div class="space-y-4">
             <div class="border-b border-gray-800 pb-4">
-              <span class="text-xs text-brand-500 font-semibold">Tam Erişim</span>
-              <h3 class="text-2xl font-bold font-serif text-gray-100 mt-1">Pro</h3>
-              <div class="text-3xl font-black text-brand-500 mt-2">₺200 <span class="text-xs text-gray-500 font-normal">/ ay</span></div>
+              <span class="text-xs text-brand-500 font-semibold">Tam Erişim (1 Ay)</span>
+              <h3 class="text-2xl font-bold font-serif text-gray-100 mt-1">Pro Plan</h3>
+              <div class="text-3xl font-black text-brand-500 mt-2">₺200 <span class="text-xs text-gray-500 font-normal">/ 1 ay</span></div>
             </div>
 
             <ul class="text-xs text-gray-200 space-y-3 font-sans">
-              <li class="flex items-center gap-2">✓ Sınırsız Yapay Zeka Program Güncellemesi (Günde 2x)</li>
-              <li class="flex items-center gap-2">✓ Hafta Sonu İleri Seviye Skill & Muscle-up Çalışmaları</li>
+              <li class="flex items-center gap-2">✓ Haftada 3 Kez Yapay Zeka Programı Oluşturma</li>
+              <li class="flex items-center gap-2">✓ Hafta Sonu İleri Seviye Skill & Muscle-Up Rutinleri</li>
               <li class="flex items-center gap-2">✓ İlerleme İstatistikleri Kaydı & Geçmiş Takibi</li>
-              <li class="flex items-center gap-2">✓ Biyomekanik Hareket Kütüphanesine Sınırsız Erişim</li>
+              <li class="flex items-center gap-2">✓ Biyomekanik Hareket Kütüphanesine Tam Erişim</li>
+              <li class="flex items-center gap-2">✓ 1 Ay Boyunca Kesintisiz Pro Ayrıcalığı</li>
             </ul>
           </div>
 
-          <button onclick="redirectToLemonSqueezy()" class="w-full bg-brand-500 hover:bg-brand-600 text-dark-950 font-bold text-xs py-3 rounded-xl transition uppercase tracking-wider">
+          <button onclick="redirectToLemonSqueezy()" class="w-full bg-brand-500 hover:bg-brand-600 text-dark-950 font-bold text-xs py-3.5 rounded-xl transition uppercase tracking-wider">
             Lemon Squeezy İle Pro'ya Geç (₺200)
           </button>
         </div>
@@ -435,24 +436,33 @@
     </div>
   </div>
 
+  <!-- Modal: Yasal Metinler (Gizlilik, Kullanım Şartları, İade) -->
+  <div id="legalModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="border border-gray-800 bg-dark-900 p-6 md:p-8 rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto space-y-4 text-xs relative">
+      <button onclick="closeLegalModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white font-bold text-base">✕</button>
+      <div id="legalModalContent" class="space-y-3 text-gray-300 font-sans leading-relaxed"></div>
+    </div>
+  </div>
+
   <!-- Modal: Giriş / Kayıt -->
   <div id="authModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="border border-gray-800 bg-dark-900 p-6 rounded-2xl max-w-md w-full space-y-4 text-xs relative">
-      <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
+      <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white font-bold text-base">✕</button>
       <h3 class="text-xl font-bold font-serif text-center text-gray-100">halithenics Hesabı</h3>
+      <p class="text-[11px] text-gray-400 text-center font-sans">Programınızı bulutta saklamak ve Pro avantajlardan yararlanmak için giriş yapın.</p>
       
-      <button onclick="loginWithGoogle()" class="w-full bg-dark-950 border border-gray-700 py-3 text-gray-200 font-bold rounded-xl hover:bg-gray-800 flex items-center justify-center gap-2">
+      <button onclick="loginWithGoogle()" class="w-full bg-dark-950 border border-gray-700 py-3 text-gray-200 font-bold rounded-xl hover:bg-gray-800 hover:border-brand-500 transition flex items-center justify-center gap-2">
         <svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
         Google ile Devam Et
       </button>
 
-      <div class="text-center text-gray-600 my-2">— veya —</div>
+      <div class="text-center text-gray-600 my-2 text-[11px]">— veya e-posta ile —</div>
 
       <!-- Giriş / Kayıt Formu -->
       <form id="authMainForm" onsubmit="handleEmailAuth(event)" class="space-y-3">
         <input type="email" id="authEmail" placeholder="E-posta Adresiniz" required class="w-full bg-dark-950 border border-gray-800 p-3 text-white rounded-xl focus:border-brand-500 outline-none">
         <input type="password" id="authPass" placeholder="Şifreniz" required class="w-full bg-dark-950 border border-gray-800 p-3 text-white rounded-xl focus:border-brand-500 outline-none">
-        <button type="submit" class="w-full bg-brand-500 text-dark-950 font-bold py-3 rounded-xl">
+        <button type="submit" class="w-full bg-brand-500 hover:bg-brand-600 text-dark-950 font-bold py-3 rounded-xl transition">
           Giriş Yap / Kayıt Ol
         </button>
       </form>
@@ -481,10 +491,13 @@
         <span class="font-bold text-gray-300">halithenics</span>
         <span>© 2026</span>
       </div>
-      <div class="flex gap-4">
+      <div class="flex flex-wrap gap-4 text-[11px] text-gray-400">
         <a href="#" onclick="showTab('home')" class="hover:underline">Ana Sayfa</a>
         <a href="#" onclick="showTab('articles')" class="hover:underline">Rehber & Tarihçe</a>
         <a href="#" onclick="showTab('pricing')" class="hover:underline">Planlar</a>
+        <button onclick="openLegalModal('privacy')" class="hover:text-white transition">Gizlilik Politikası</button>
+        <button onclick="openLegalModal('terms')" class="hover:text-white transition">Kullanım Şartları</button>
+        <button onclick="openLegalModal('refund')" class="hover:text-white transition">İade Politikası</button>
       </div>
     </div>
   </footer>
@@ -492,7 +505,7 @@
   <!-- Firebase App, Auth & Firestore SDK Entegrasyonu -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -509,7 +522,8 @@
     const db = getFirestore(app);
     const provider = new GoogleAuthProvider();
 
-    // Firestore Yardımcı Fonksiyonlarını Global Window Nesnesine Bağlayalım
+    window.firebaseAuth = auth;
+
     window.db_saveUserToFirestore = async function(email, userData) {
       try {
         const cleanEmail = email.toLowerCase().trim();
@@ -545,8 +559,16 @@
         window.showToast("Google ile giriş yaparken bir aksama oluştu.", "error");
       }
     };
+
+    window.firebaseSignOut = async function() {
+      try {
+        await signOut(auth);
+      } catch (e) {
+        console.error("SignOut Error:", e);
+      }
+    };
   </script>
 
-  <script src="app.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>

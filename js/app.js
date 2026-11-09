@@ -1,5 +1,5 @@
 /* ==========================================================================
-   halithenics — Engine (With Cloud Firestore & Verification Logic)
+   halithenics — Engine (With Cloud Firestore & Verification & Subscription)
    ========================================================================== */
 
 let currentUser = null;
@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
       splash.style.display = 'none';
       splash.classList.add('hidden');
     }
-  }, 1000);
+  }, 800);
 
   if (typeof emailjs !== 'undefined' && EMAILJS_PUBLIC_KEY) {
     try { emailjs.init(EMAILJS_PUBLIC_KEY); } catch (e) { console.error(e); }
@@ -78,31 +78,37 @@ function closeHypertrophyBox() {
 }
 
 /* ==========================================================================
-   LEMON SQUEEZY YÖNLENDİRMESİ
+   LEMON SQUEEZY YÖNLENDİRMESİ VE ABONELİK (1 AY & HAFTADA 3 PROGRAM HAKKI)
    ========================================================================== */
 function redirectToLemonSqueezy() {
-  if (!currentUser) {
-    showToast("Ödeme yapabilmek için önce giriş yapmalısınız.", "warning");
+  if (!currentUser || !currentUser.email) {
+    showToast("Pro üyelik satın alabilmek için lütfen önce bir hesap oluşturun veya giriş yapın.", "warning");
     openAuthModal();
     return;
   }
 
+  const userEmail = currentUser.email || '';
   const redirectUrl = encodeURIComponent(`${window.location.origin}${window.location.pathname}?payment=success`);
-  const finalCheckoutUrl = `${LEMON_SQUEEZY_CHECKOUT_URL}?checkout[email]=${encodeURIComponent(currentUser.email)}&checkout[custom][user_email]=${encodeURIComponent(currentUser.email)}&redirect_url=${redirectUrl}`;
+  const finalCheckoutUrl = `${LEMON_SQUEEZY_CHECKOUT_URL}?checkout[email]=${encodeURIComponent(userEmail)}&checkout[custom][user_email]=${encodeURIComponent(userEmail)}&redirect_url=${redirectUrl}`;
 
-  showToast("Lemon Squeezy ödeme sayfasına yönlendiriliyorsunuz...", "info");
-  setTimeout(() => { window.location.href = finalCheckoutUrl; }, 1500);
+  showToast("Lemon Squeezy güvenli ödeme sayfasına yönlendiriliyorsunuz...", "info");
+  setTimeout(() => { window.location.href = finalCheckoutUrl; }, 1200);
 }
 
 function handlePaymentSuccess() {
   const localUser = JSON.parse(localStorage.getItem('halithenics_currentUser'));
-  if (localUser && localUser.email) {
-    currentUser = localUser;
+  const user = currentUser || localUser;
+  
+  if (user && user.email) {
+    currentUser = user;
     currentUser.isPro = true;
-    currentUser.proExpiresAt = Date.now() + (30 * 24 * 60 * 60 * 1000);
+    currentUser.proExpiresAt = Date.now() + (30 * 24 * 60 * 60 * 1000); // 1 Ay (30 Gün)
+    currentUser.proWeeklyCount = 0;
+    currentUser.proWeekStartDate = Date.now();
+    
     saveUserData();
     updateNavUser();
-    showToast("Ödemeniz doğrulandı! Pro Üyeliğiniz Aktif Edildi.", "info");
+    showToast("Ödemeniz doğrulandı! 1 Aylık Pro Üyeliğiniz hesabınızda aktifleştirildi.", "info");
     window.history.replaceState({}, document.title, window.location.pathname);
   }
 }
@@ -180,14 +186,68 @@ function closeAuthModal() {
 }
 
 /* ==========================================================================
-   FIRESTORE BULUT VERİTABANI MOTORU
+   YASAL METİNLER MODALI (Gizlilik, Kullanım Şartları, İade)
+   ========================================================================== */
+function openLegalModal(type) {
+  const modal = document.getElementById('legalModal');
+  const content = document.getElementById('legalModalContent');
+  if (!modal || !content) return;
+
+  if (type === 'privacy') {
+    content.innerHTML = `
+      <h3 class="text-xl font-bold font-serif text-gray-100 border-b border-gray-800 pb-2">Gizlilik Politikası (Privacy Policy)</h3>
+      <p class="text-[11px] text-gray-400">Son Güncelleme: Kasım 2026</p>
+      <p>halithenics ("Sitemiz"), kullanıcılarımızın gizliliğine ve kişisel verilerinin korunmasına büyük önem vermektedir. Bu bildirim, 6698 sayılı KVKK ve GDPR uyumlu veri işleme esaslarımızı açıklar.</p>
+      <h4 class="font-bold text-gray-200 text-sm mt-3">1. Toplanan Veriler</h4>
+      <p>Sitemize üye olurken veya Google Sign-In kullanırken sağladığınız e-posta adresi, profil bilgileri, vücut ölçüleri (boy, kilo, yaş) ve antrenman tercihleri veritabanımızda güvenle saklanır.</p>
+      <h4 class="font-bold text-gray-200 text-sm mt-3">2. Verilerin Kullanımı ve Saklanması</h4>
+      <p>Toplanan veriler yalnızca kişiselleştirilmiş calisthenics antrenman ve makro beslenme programları oluşturmak, oturumunuzu açık tutmak ve üyelik statünüzü (Ücretsiz/Pro) doğrulamak için kullanılır. Verileriniz üçüncü taraflarla reklam amacıyla asla paylaşılmaz.</p>
+      <h4 class="font-bold text-gray-200 text-sm mt-3">3. Ödeme ve İşlem Güvenliği</h4>
+      <p>Ödeme işlemleri uluslararası ödeme altyapısı Lemon Squeezy aracılığıyla yürütülmektedir. Kredi kartı veya banka bilgileriniz halithenics sunucularında asla tutulmaz veya işlenmez.</p>
+    `;
+  } else if (type === 'terms') {
+    content.innerHTML = `
+      <h3 class="text-xl font-bold font-serif text-gray-100 border-b border-gray-800 pb-2">Kullanım Şartları (Terms of Service)</h3>
+      <p class="text-[11px] text-gray-400">Son Güncelleme: Kasım 2026</p>
+      <p>halithenics platformunu kullanarak aşağıdaki şartları kabul etmiş sayılırsınız.</p>
+      <h4 class="font-bold text-gray-200 text-sm mt-3">1. Hizmet Kapsamı</h4>
+      <p>halithenics, vücut ağırlığı antrenmanlarına yönelik yapay zeka ve algoritma destekli kişisel antrenman programı oluşturma hizmeti sunan dijital bir platformdur.</p>
+      <h4 class="font-bold text-gray-200 text-sm mt-3">2. Hesap Sorumluluğu</h4>
+      <p>Kullanıcılar hesap güvenliklerinden kendileri sorumludur. Pro üyelikler kişiye özel olup başka hesaplarla paylaşılamaz veya devredilemez.</p>
+      <h4 class="font-bold text-gray-200 text-sm mt-3">3. Sağlık ve Sorumluluk Reddi</h4>
+      <p>Sitede sunulan egzersiz tavsiyeleri ve programlar genel bilgilendirme ve spor rehberliği amaçlıdır. Herhangi bir tıbbi teşhis veya tedavi yerine geçmez. Antrenmanlara başlamadan önce sağlık durumunuzu doktorunuza danışmanız önerilir.</p>
+    `;
+  } else if (type === 'refund') {
+    content.innerHTML = `
+      <h3 class="text-xl font-bold font-serif text-gray-100 border-b border-gray-800 pb-2">İade ve İptal Politikası (Refund Policy)</h3>
+      <p class="text-[11px] text-gray-400">Son Güncelleme: Kasım 2026</p>
+      <h4 class="font-bold text-gray-200 text-sm mt-3">1. Dijital İçerik İade Esasları</h4>
+      <p>halithenics Pro planı, satın alma anında anında erişime açılan dijital antrenman içerikleri ve algoritma hizmetlerini kapsar.</p>
+      <h4 class="font-bold text-gray-200 text-sm mt-3">2. İade Koşulları</h4>
+      <p>Mesafeli Sözleşmeler Yönetmeliği uyarınca, elektronik ortamda anında ifa edilen dijital içerik hizmetlerinde cayma hakkı sınırlıdır. Ancak teknik bir aksaklık veya hizmete erişim sağlanamaması durumunda, satın alımdan itibaren 14 gün içinde yapılan başvurular değerlendirilerek iade işlemi gerçekleştirilir.</p>
+      <h4 class="font-bold text-gray-200 text-sm mt-3">3. İletişim</h4>
+      <p>İade veya destek talepleriniz için destek kanalımız üzerinden bizimle iletişime geçebilirsiniz.</p>
+    `;
+  }
+
+  modal.classList.remove('hidden');
+}
+
+function closeLegalModal() {
+  const modal = document.getElementById('legalModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+/* ==========================================================================
+   FIRESTORE BULUT VERİTABANI MOTORU & YEREL OTURUM
    ========================================================================== */
 async function checkLocalSession() {
   const localUser = JSON.parse(localStorage.getItem('halithenics_currentUser'));
+  const guestProg = JSON.parse(localStorage.getItem('halithenics_guestProgram'));
+
   if (localUser && localUser.email) {
     const cleanEmail = localUser.email.toLowerCase().trim();
     
-    // Firestore Bulut Veritabanından Veriyi Çek
     let dbUser = null;
     if (window.db_getUserFromFirestore) {
       dbUser = await window.db_getUserFromFirestore(cleanEmail);
@@ -198,40 +258,61 @@ async function checkLocalSession() {
     checkSubscriptionStatus();
     updateNavUser();
     
-    savedProgram = currentUser.program || null;
-    userStats = currentUser.stats || { workouts: 0, streak: 0, pullups: '-' };
+    savedProgram = currentUser.program || guestProg || null;
+    userStats = currentUser.stats || { workouts: 0, streak: 0, pullups: savedProgram ? savedProgram.pullups : '-' };
     
     if (savedProgram) {
       const badge = document.getElementById('savedBadge');
       if (badge) badge.classList.remove('hidden');
       renderProgramDashboard();
     }
+  } else if (guestProg) {
+    savedProgram = guestProg;
+    userStats = { workouts: 0, streak: 0, pullups: guestProg.pullups || '-' };
+    const badge = document.getElementById('savedBadge');
+    if (badge) badge.classList.remove('hidden');
+    renderProgramDashboard();
   }
 }
 
 function checkSubscriptionStatus() {
   if (!currentUser) return;
+  
+  // 1 Ay (30 Gün) Dolma Kontrolü
   if (currentUser.isPro && currentUser.proExpiresAt) {
     if (Date.now() > currentUser.proExpiresAt) {
       currentUser.isPro = false;
       currentUser.proExpiresAt = null;
+      currentUser.proWeeklyCount = 0;
       saveUserData();
-      showToast("Pro üyelik süreniz doldu. Hesabınız Ücretsiz plana düşürüldü.", "warning");
+      showToast("1 Aylık Pro üyelik süreniz doldu. Hesabınız Ücretsiz plana güncellendi.", "warning");
+    }
+  }
+
+  // Haftalık 3 Program Hakkı Sıfırlama Kontrolü (Pro Kullanıcılar İçin)
+  if (currentUser.isPro) {
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+    if (!currentUser.proWeekStartDate || (Date.now() - currentUser.proWeekStartDate > SEVEN_DAYS_MS)) {
+      currentUser.proWeekStartDate = Date.now();
+      currentUser.proWeeklyCount = 0;
+      saveUserData();
     }
   }
 }
 
 function saveUserData() {
+  if (savedProgram) {
+    localStorage.setItem('halithenics_guestProgram', JSON.stringify(savedProgram));
+  }
+
   if (!currentUser || !currentUser.email) return;
   const cleanEmail = currentUser.email.toLowerCase().trim();
   
   currentUser.program = savedProgram;
   currentUser.stats = userStats;
   
-  // 1. Yerel hafızaya kaydet
   localStorage.setItem('halithenics_currentUser', JSON.stringify(currentUser));
   
-  // 2. Firestore Bulut Veritabanına Anında Kaydet
   if (window.db_saveUserToFirestore) {
     window.db_saveUserToFirestore(cleanEmail, currentUser);
   }
@@ -267,22 +348,20 @@ async function handleEmailAuth(e) {
 
   const cleanEmail = email.toLowerCase().trim();
   
-  // Firestore'dan bu e-postayı kontrol et
   let existingDB = null;
   if (window.db_getUserFromFirestore) {
     existingDB = await window.db_getUserFromFirestore(cleanEmail);
   }
 
   if (existingDB) {
-    // KULLANICI VARSA: Şifre Doğrulama Yap (Kod Sorma)
     if (existingDB.password && existingDB.password !== password) {
       showToast("Bu e-posta adresi zaten kullanılıyor. Şifreniz hatalı!", "error");
       return;
     }
     
     currentUser = existingDB;
-    savedProgram = currentUser.program || null;
-    userStats = currentUser.stats || { workouts: 0, streak: 0, pullups: '-' };
+    savedProgram = currentUser.program || savedProgram || null;
+    userStats = currentUser.stats || { workouts: 0, streak: 0, pullups: savedProgram ? savedProgram.pullups : '-' };
     
     saveUserData();
     checkSubscriptionStatus();
@@ -297,7 +376,6 @@ async function handleEmailAuth(e) {
       showTab('myProgram');
     }
   } else {
-    // KULLANICI YOKSA: Sadece Yeni Kayıtta Doğrulama Kodu Gönder
     const generatedCode = Math.floor(100000 + Math.random() * 900000).toString();
     pendingRegistration = { email: cleanEmail, password, code: generatedCode };
 
@@ -330,16 +408,16 @@ function handleVerifyCodeSubmit(e) {
   }
 
   if (inputCode === pendingRegistration.code) {
-    // KOD DOĞRU: Hesabı Firestore'a Oluştur ve Aç
     currentUser = { 
       email: pendingRegistration.email, 
       password: pendingRegistration.password,
       isPro: false, 
       proExpiresAt: null, 
+      proWeeklyCount: 0,
+      proWeekStartDate: null,
       lastCreated: null, 
-      dailyCount: 0,
-      program: null,
-      stats: { workouts: 0, streak: 0, pullups: '-' }
+      program: savedProgram || null,
+      stats: userStats || { workouts: 0, streak: 0, pullups: '-' }
     };
 
     saveUserData();
@@ -370,19 +448,19 @@ async function handleGoogleLoginSuccess(email) {
 
   if (existingDB) {
     currentUser = existingDB;
-    savedProgram = currentUser.program || null;
-    userStats = currentUser.stats || { workouts: 0, streak: 0, pullups: '-' };
+    savedProgram = currentUser.program || savedProgram || null;
+    userStats = currentUser.stats || { workouts: 0, streak: 0, pullups: savedProgram ? savedProgram.pullups : '-' };
     showToast(`Google ile giriş yapıldı: ${cleanEmail}`, "info");
   } else {
-    // Google ile ilk kez giren kullanıcı (Kod Sormaz)
     currentUser = { 
       email: cleanEmail, 
       isPro: false, 
       proExpiresAt: null, 
+      proWeeklyCount: 0,
+      proWeekStartDate: null,
       lastCreated: null, 
-      dailyCount: 0,
-      program: null,
-      stats: { workouts: 0, streak: 0, pullups: '-' }
+      program: savedProgram || null,
+      stats: userStats || { workouts: 0, streak: 0, pullups: '-' }
     };
     showToast(`Hesabınız Google ile oluşturuldu: ${cleanEmail}`, "info");
   }
@@ -405,7 +483,12 @@ function logout() {
   savedProgram = null;
   userStats = { workouts: 0, streak: 0, pullups: '-' };
   localStorage.removeItem('halithenics_currentUser');
+  localStorage.removeItem('halithenics_guestProgram');
   
+  if (window.firebaseSignOut) {
+    window.firebaseSignOut();
+  }
+
   updateNavUser();
   const badge = document.getElementById('savedBadge');
   if (badge) badge.classList.add('hidden');
@@ -425,7 +508,7 @@ function updateNavUser() {
   
   if (!area) return;
 
-  if (currentUser) {
+  if (currentUser && currentUser.email) {
     const isPro = currentUser.isPro;
     area.innerHTML = `
       <div class="flex items-center gap-2 text-xs font-semibold">
@@ -439,7 +522,8 @@ function updateNavUser() {
     if (badge) {
       if (isPro && currentUser.proExpiresAt) {
         const daysLeft = Math.ceil((currentUser.proExpiresAt - Date.now()) / (1000 * 60 * 60 * 24));
-        badge.innerText = `Pro Sporcu (Kalan: ${daysLeft} Gün)`;
+        const weeklyRemaining = 3 - (currentUser.proWeeklyCount || 0);
+        badge.innerText = `Pro Sporcu (${daysLeft} Gün Kalan | Haftalık Hak: ${weeklyRemaining}/3)`;
       } else {
         badge.innerText = 'Ücretsiz Hesap';
       }
@@ -488,25 +572,30 @@ function nextWizStep(step) {
 function handleWizardSubmit(e) {
   if (e) e.preventDefault();
 
-  if (!currentUser) {
-    showToast("Program oluşturabilmek için önce giriş yapmalısınız.", "warning");
-    openAuthModal();
-    return;
-  }
-
   const now = Date.now();
   const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
-  if (!currentUser.isPro) {
-    if (currentUser.lastCreated && (now - currentUser.lastCreated < THREE_DAYS_MS)) {
-      const daysLeft = Math.ceil((THREE_DAYS_MS - (now - currentUser.lastCreated)) / (1000 * 60 * 60 * 24));
-      showToast(`Ücretsiz hesaplarda 3 günde 1 program oluşturulabilir. Kalan: ${daysLeft} gün. Pro hesaba geçebilirsiniz.`, "warning");
-      return;
-    }
-  } else {
-    if (currentUser.dailyCount >= 2) {
-      showToast("Pro planda günlük program oluşturma sınırına ulaştınız (2/2).", "warning");
-      return;
+  // Program Oluşturma Sınırları ve Kontrolleri
+  if (currentUser && currentUser.email) {
+    if (!currentUser.isPro) {
+      // Ücretsiz Hesap: 3 günde 1 program hakkı
+      if (currentUser.lastCreated && (now - currentUser.lastCreated < THREE_DAYS_MS)) {
+        const daysLeft = Math.ceil((THREE_DAYS_MS - (now - currentUser.lastCreated)) / (1000 * 60 * 60 * 24));
+        showToast(`Ücretsiz hesaplarda 3 günde 1 program oluşturulabilir. Kalan süre: ${daysLeft} gün. Pro hesaba geçerek haftada 3 kez program kurabilirsiniz.`, "warning");
+        return;
+      }
+    } else {
+      // Pro Hesap: Haftada 3 kez program kurma hakkı
+      if (!currentUser.proWeekStartDate || (now - currentUser.proWeekStartDate > SEVEN_DAYS_MS)) {
+        currentUser.proWeekStartDate = now;
+        currentUser.proWeeklyCount = 0;
+      }
+
+      if ((currentUser.proWeeklyCount || 0) >= 3) {
+        showToast("Pro hesabınızın bu haftalık program oluşturma hakkını doldurdunuz (3/3). Hakkınız 7 günlük periyot sonunda sıfırlanacaktır.", "warning");
+        return;
+      }
     }
   }
 
@@ -523,6 +612,7 @@ function handleWizardSubmit(e) {
   const goal = goalEl ? goalEl.value : 'maintain';
   const days = parseInt(document.getElementById('wizDays').value);
 
+  // Mifflin-St Jeor TDEE & Makro Hesaplaması
   let bmr = (10 * weight) + (6.25 * height) - (5 * age) + 5;
   let tdee = bmr * 1.375;
   if (goal === 'lose') tdee -= 400;
@@ -535,12 +625,17 @@ function handleWizardSubmit(e) {
   savedProgram = {
     cal: Math.round(tdee),
     protein, carb, fat, pullups,
-    goal, weight, height, days
+    goal, weight, height, age, days
   };
 
   userStats.pullups = pullups;
-  currentUser.lastCreated = now;
-  currentUser.dailyCount = (currentUser.dailyCount || 0) + 1;
+
+  if (currentUser && currentUser.email) {
+    currentUser.lastCreated = now;
+    if (currentUser.isPro) {
+      currentUser.proWeeklyCount = (currentUser.proWeeklyCount || 0) + 1;
+    }
+  }
 
   saveUserData();
 
@@ -548,7 +643,12 @@ function handleWizardSubmit(e) {
   if (badge) badge.classList.remove('hidden');
   renderProgramDashboard();
   showTab('myProgram');
-  showToast("Yapay zeka antrenman programınız başarıyla oluşturuldu ve buluta kaydedildi.", "info");
+  
+  if (currentUser && currentUser.email) {
+    showToast("Calisthenics antrenman programınız başarıyla oluşturuldu ve hesabınıza kaydedildi.", "info");
+  } else {
+    showToast("Programınız özel algoritma ile oluşturuldu! (Hesabınıza kaydetmek için giriş yapabilirsiniz)", "info");
+  }
 }
 
 function renderProgramDashboard() {
@@ -572,38 +672,78 @@ function renderProgramDashboard() {
   if (!container) return;
   container.innerHTML = '';
 
-  const p = savedProgram.pullups;
-  let daysData = [];
+  const p = savedProgram.pullups || 0;
+  const h = savedProgram.height || 175;
+  const w = savedProgram.weight || 70;
+  const daysFreq = savedProgram.days || 4;
+  const goal = savedProgram.goal || 'maintain';
+
+  // Bilimsel Biyomekanik & Moment Kolu Faktörü (BMI & Boy Uzunluğu)
+  const bmi = (w / ((h / 100) * (h / 100))).toFixed(1);
+  const isHighLeverage = h > 182 || bmi > 25; // Uzun boy veya yüksek kitle durumunda eklem yükü artar
+
+  // Hareket Kademeleri
+  let pushEx1 = '4 Set x 10 Paralel Dip';
+  let pushEx2 = '4 Set x 12 Defisit Şınav';
+  let pullEx1 = '4 Set x 8 Nizami Barfiks';
+  let pullEx2 = '3 Set x 10 Eğik Çekiş (Australian Row)';
+  let legEx1 = '4 Set x 15 Çömelme (Air Squat)';
+  let legEx2 = '3 Set x 12 Bulgarian Split Squat';
 
   if (p < 4) {
+    pushEx1 = isHighLeverage ? '4 Set x 10 Eğimli Şınav (Incline Push-Up)' : '4 Set x 8 Nizami Şınav';
+    pushEx2 = '3 Set x 6 Yavaş İnişli Negatif Dip';
+    pullEx1 = '4 Set x 6 Negatif Barfiks (5sn Yavaş İniş)';
+    pullEx2 = '3 Set x 10 Eğik Çekiş (Australian Row)';
+    legEx1 = '4 Set x 15 Vücut Ağırlığı Squat';
+    legEx2 = '3 Set x 10 Adımlama Lunge';
+  } else if (p <= 10) {
+    pushEx1 = '4 Set x 10 Paralel Dip';
+    pushEx2 = '4 Set x 12 Şınav (Göğüs Aktivasyonu)';
+    pullEx1 = `4 Set x ${Math.max(5, Math.round(p * 0.8))} Tekrar Nizami Barfiks`;
+    pullEx2 = '3 Set x 10 Chin-Up (Biceps Odağı)';
+    legEx1 = '4 Set x 12 Sıçramalı Squat (Jump Squat)';
+    legEx2 = '3 Set x 10 Bulgarian Split Squat';
+  } else {
+    pushEx1 = '5 Set x 8 Ağırlıklı / Defisit Dip';
+    pushEx2 = '4 Set x 8 Okçu Şınavı (Archer Push-Up)';
+    pullEx1 = '5 Set x 6 Yüksek / Ağırlıklı Barfiks';
+    pullEx2 = '4 Set x 8 Sternum Barfiks';
+    legEx1 = '4 Set x 8 Pistol Squat (Tek Bacak Squat)';
+    legEx2 = '4 Set x 12 Nordic Hamstring Curl Prep';
+  }
+
+  let daysData = [];
+
+  if (daysFreq === 3) {
     daysData = [
-      { day: 'Pazartesi', type: 'Göğüs & İtiş Gücü', ex: ['4 Set x 8 Tekrar Diz Üstü / Nizami Şınav', '3 Set x 6 Tekrar Yavaş İnişli Negatif Dip', '3 Set x 45 Saniye Plank'] },
-      { day: 'Salı', type: 'Sırt & Çekiş Hipertrofisi', ex: ['4 Set x 6 Tekrar Negatif Barfiks (5sn iniş)', '3 Set x 10 Tekrar Eğik Çekiş (Australian Row)', '3 Set x 12 Tekrar Yüz Çekişi (Facepull)'] },
-      { day: 'Çarşamba', type: 'Dinlenme & Mobilite', ex: ['Aktif Dinlenme - 30 Dk Tempolu Yürüyüş & Esnetme'] },
-      { day: 'Perşembe', type: 'Alt Vücut & Karın', ex: ['4 Set x 15 Tekrar Çömelme (Air Squat)', '3 Set x 10 Tekrar Lunge', '3 Set x 12 Tekrar Bacak Kaldırma (Leg Raise)'] },
-      { day: 'Cuma', type: 'Tüm Vücut Dayanıklılık', ex: ['3 Set x 8 Şınav', '3 Set x 5 Negatif Barfiks', '3 Set x 12 Squat'] },
+      { day: 'Pazartesi', type: 'Gün 1: Tüm Vücut A', ex: [pullEx1, pushEx1, legEx1, '3 Set x 45 Saniye Kore Plank'] },
+      { day: 'Salı', type: 'Aktif Dinlenme & Mobilite', ex: ['30 Dk Tempolu Yürüyüş & Omuz Esnetme'] },
+      { day: 'Çarşamba', type: 'Gün 2: Tüm Vücut B', ex: [pullEx2, pushEx2, legEx2, '3 Set x 12 Barda Diz Kaldırma'] },
+      { day: 'Perşembe', type: 'Aktif Dinlenme & Eklem Sağlığı', ex: ['Köpük Rulo Masajı & Kalça Mobilite'] },
+      { day: 'Cuma', type: 'Gün 3: Tüm Vücut C', ex: ['3 Set x Maksimum Şınav', '3 Set x Maksimum Barfiks', '4 Set x 15 Squat', '3 Set x 30sn Hollow Body Hold'] },
       { day: 'Cumartesi', type: 'Teknik & Bar Uyumu', isWeekend: true, ex: ['4 Set x 20 Saniye Barda Asılı Kalma', '3 Set x 8 Skapular Barfiks'] },
       { day: 'Pazar', type: 'Tam Dinlenme', isWeekend: true, ex: ['Kas Onarımı ve Rejenerasyon'] }
     ];
-  } else if (p <= 10) {
+  } else if (daysFreq === 5) {
     daysData = [
-      { day: 'Pazartesi', type: 'Çekiş A (Sırt & Biceps)', ex: ['4 Set x %80 Maksimum Nizami Barfiks', '3 Set x 8 Chin-Up', '3 Set x 10 Eğik Çekiş', '3 Set x 12 Vücut Ağırlığı Curl'] },
-      { day: 'Salı', type: 'İtiş A (Göğüs & Omuz)', ex: ['4 Set x 10 Paralel Dip', '4 Set x 12 Defisit Şınav', '3 Set x 8 Pike Push-Up (Omuz)'] },
-      { day: 'Çarşamba', type: 'Dinlenme', ex: ['Aktif Dinlenme & Köpük Rulo Masajı'] },
-      { day: 'Perşembe', type: 'Bacak & Karın Stabilitesi', ex: ['4 Set x 12 Sıçramalı Squat', '3 Set x 10 Destekli Tek Bacak Squat', '4 Set x 10 Barda Diz Kaldırma'] },
-      { day: 'Cuma', type: 'Üst Vücut Yoğunluk', ex: ['3 Set x Maksimum Barfiks', '3 Set x 12 Dip', '3 Set x 15 Elmas Şınav'] },
-      { day: 'Cumartesi', type: 'Gelişmiş Teknikler', isWeekend: true, ex: ['4 Set x 5 Göğse Çekiş Barfiks', '3 Set x 30 Saniye Hollow Body Hold'] },
-      { day: 'Pazar', type: 'Dinlenme', isWeekend: true, ex: ['Tam Dinlenme'] }
+      { day: 'Pazartesi', type: 'Gün 1: İtiş (Push - Göğüs & Omuz)', ex: [pushEx1, pushEx2, '3 Set x 10 Pike Push-Up (Omuz)', '3 Set x 15 Elmas Şınav'] },
+      { day: 'Salı', type: 'Gün 2: Çekiş (Pull - Sırt & Biceps)', ex: [pullEx1, pullEx2, '3 Set x 10 Face Pull', '3 Set x 12 Vücut Ağırlığı Biceps Curl'] },
+      { day: 'Çarşamba', type: 'Gün 3: Alt Vücut & Core', ex: [legEx1, legEx2, '4 Set x 12 Borda Diz/Bacak Kaldırma', '3 Set x 45sn Plank'] },
+      { day: 'Perşembe', type: 'Dinlenme & Mobilite', ex: ['Tüm Vücut Esnetme & Bilek Isınması'] },
+      { day: 'Cuma', type: 'Gün 4: Üst Vücut Hacim', ex: ['4 Set x 10 Nizami Barfiks', '4 Set x 12 Dip', '3 Set x 15 Şınav'] },
+      { day: 'Cumartesi', type: 'Gün 5: Beceri & Core (Skill Day)', isWeekend: true, ex: ['4 Set x 5 Göğse Çekiş / Muscle-Up Geçişi', '4 Set x 15 Saniye L-Sit / Tuck Hold'] },
+      { day: 'Pazar', type: 'Tam Dinlenme', isWeekend: true, ex: ['Kas Onarımı ve Zihinsel Yenilenme'] }
     ];
   } else {
     daysData = [
-      { day: 'Pazartesi', type: 'Ağırlıklı / Ağır Çekiş', ex: ['5 Set x 5 Tekrar Ağırlıklı Barfiks', '4 Set x 8 Sternum Barfiks', '3 Set x 6 Yüksek Çekiş Barfiks'] },
-      { day: 'Salı', type: 'Ağır İtiş & Dipler', ex: ['5 Set x 6 Tekrar Ağırlıklı Dip', '4 Set x 8 Okçu Şınavı (Archer)', '3 Set x 6 Duvarda Amut Şınavı'] },
-      { day: 'Çarşamba', type: 'Dinlenme & Mobilite', ex: ['Aktif Dinlenme ve Eklem Sağlığı Çalışması'] },
-      { day: 'Perşembe', type: 'Patlayıcı Bacak & Karın', ex: ['4 Set x 8 Tek Bacak Squat (Pistol)', '4 Set x 12 Arka Bacak Curl', '4 Set x 10 Barda Bacak Kaldırma'] },
-      { day: 'Cuma', type: 'Hacim Odaklı Üst Vücut', ex: ['4 Set x 10 Nizami Barfiks', '4 Set x 15 Düz Bar Dip', '3 Set x 12 Halka Şınav'] },
-      { day: 'Cumartesi', type: 'Muscle-Up & Skill Çalışması', isWeekend: true, ex: ['5 Set x 3 Temiz Bar Muscle-Up', '4 Set x 15 Saniye Front Lever Tuck Hold'] },
-      { day: 'Pazar', type: 'Yenilenme', isWeekend: true, ex: ['Zihinsel ve Fiziksel Dinlenme'] }
+      { day: 'Pazartesi', type: 'Gün 1: Üst Vücut A (İtiş & Çekiş)', ex: [pullEx1, pushEx1, '3 Set x 10 Eğik Çekiş', '3 Set x 10 Pike Push-Up'] },
+      { day: 'Salı', type: 'Gün 2: Alt Vücut & Core A', ex: [legEx1, legEx2, '3 Set x 12 Bacak Kaldırma', '3 Set x 45sn Plank'] },
+      { day: 'Çarşamba', type: 'Dinlenme & Mobilite', ex: ['Aktif Dinlenme & Köpük Rulo Masajı'] },
+      { day: 'Perşembe', type: 'Gün 3: Üst Vücut B (Omuz & Hacim)', ex: [pullEx2, pushEx2, '3 Set x 12 Chin-Up', '3 Set x 15 Elmas Şınav'] },
+      { day: 'Cuma', type: 'Gün 4: Alt Vücut & Patlayıcılık B', ex: ['4 Set x 12 Jump Squat', '3 Set x 10 RDL (Vücut Ağırlığı)', '4 Set x 10 Barda Bacak Kaldırma'] },
+      { day: 'Cumartesi', type: 'Gelişmiş Teknikler', isWeekend: true, ex: ['4 Set x 5 Göğse Çekiş Barfiks', '3 Set x 30 Saniye Hollow Body Hold'] },
+      { day: 'Pazar', type: 'Tam Dinlenme', isWeekend: true, ex: ['Kas Onarımı ve Rejenerasyon'] }
     ];
   }
 
@@ -669,7 +809,7 @@ function setTimer(sec) {
   timerSecondsLeft = sec;
   updateTimerDisplay();
   const status = document.getElementById('timerStatus');
-  if (status) status.innerText = "Set";
+  if (status) status.innerText = "Hazır";
 }
 
 function startTimer() {
