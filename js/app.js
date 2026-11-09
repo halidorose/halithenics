@@ -906,7 +906,7 @@ function openExerciseModal(id) {
   if (!content) return;
   
   content.innerHTML = `
-    <span class="text-brand-500 text-xs font-bold">[ Biyomekanik Detay ]</span>
+    <span class="text-brand-500 text-xs font-bold">Detaylar</span>
     <h3 class="text-2xl font-bold font-serif text-gray-100 my-2">${ex.name}</h3>
     <p class="text-gray-300 leading-relaxed mb-4 font-sans">${ex.desc}</p>
     <ul class="space-y-2 border-t border-gray-800 pt-3 text-gray-400 font-sans">
